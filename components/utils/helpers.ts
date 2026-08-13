@@ -57,7 +57,7 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
   });
 };
 
-export async function downloadReceiptPDF(r: any, schoolName: string, schoolLogo: string | null = null) {
+export async function downloadReceiptPDF(r: any, schoolName: string, schoolLogo: string | null = null, schoolStamp: string | null = null) {
   const W = 80; // Largeur du ticket en mm (standard imprimante thermique)
   const extraLines = (r.carried > 0 ? 1 : 0) + (r.manque > 0 ? 1 : 0);
   const H = 200 + extraLines * 8; // Hauteur dynamique plus grande pour logo, QR code, et signature
@@ -205,11 +205,30 @@ export async function downloadReceiptPDF(r: any, schoolName: string, schoolLogo:
   doc.setFontSize(7);
   doc.setTextColor(100, 100, 100);
   doc.text("Le Directeur", W - 10, ty, { align: "right" });
+  
+  if (schoolStamp) {
+    try {
+      const stampImg = await loadImage(schoolStamp);
+      const stampRatio = stampImg.width / stampImg.height;
+      const stampWidth = 20; // 20mm width
+      const stampHeight = stampWidth / stampRatio;
+      // Position just above the signature line, slightly transparent
+      doc.saveGraphicsState();
+      doc.setGState(new GState({ opacity: 0.85 }));
+      doc.addImage(stampImg, 'PNG', W - 32, ty + 2, stampWidth, stampHeight);
+      doc.restoreGraphicsState();
+      ty += Math.max(18, stampHeight + 4);
+    } catch (err) {
+      console.warn("Could not load stamp", err);
+      ty += 18;
+    }
+  } else {
+    ty += 18;
+  }
+  
   doc.setDrawColor(150, 150, 150);
   doc.setLineWidth(0.3);
-  doc.line(W - 35, ty + 12, W - 10, ty + 12);
-  
-  ty += 18;
+  doc.line(W - 35, ty - 6, W - 10, ty - 6);
 
   // QR Code
   try {

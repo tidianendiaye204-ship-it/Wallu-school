@@ -8,7 +8,7 @@ import { ReceiptCard } from "./ReceiptCard";
 
 export function ReceiptScreen() {
   const { receipts } = useSchoolData();
-  const { schoolName, schoolLogo } = useAuth();
+  const { schoolName, schoolLogo, schoolStamp } = useAuth();
   const [receiptSearch, setReceiptSearch] = useState("");
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
 
@@ -27,16 +27,21 @@ export function ReceiptScreen() {
           <h1 className="text-2xl mb-1" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Reçus</h1>
           <p className="text-sm" style={{ color: T.muted }}>Historique des paiements</p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.muted }} />
-          <input
-            type="text"
-            placeholder="Rechercher élève ou reçu..."
-            value={receiptSearch}
-            onChange={e => setReceiptSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-md text-sm border focus:outline-none"
-            style={{ background: "#0C1626", borderColor: T.inkLine, color: T.text }}
-          />
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-72">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.muted }} />
+            <input
+              type="text"
+              placeholder="Rechercher élève ou reçu..."
+              value={receiptSearch}
+              onChange={e => setReceiptSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-md text-sm border focus:outline-none"
+              style={{ background: "#0C1626", borderColor: T.inkLine, color: T.text }}
+            />
+          </div>
+          <button onClick={() => window.print()} className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium whitespace-nowrap" style={{ background: T.gold, color: T.ink }}>
+            <Printer size={16} /> Imprimer les reçus affichés
+          </button>
         </div>
       </div>
 
@@ -64,7 +69,7 @@ export function ReceiptScreen() {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setSelectedReceipt(r)} className="text-xs px-2 py-1.5 rounded" style={{ color: T.gold, border: `1px solid ${T.inkLine}` }}>Voir</button>
-                <button onClick={() => downloadReceiptPDF(r, schoolName, schoolLogo)} className="text-xs px-2 py-1.5 rounded" style={{ color: T.text, border: `1px solid ${T.inkLine}` }} title="Télécharger PDF">
+                <button onClick={() => downloadReceiptPDF(r, schoolName, schoolLogo, schoolStamp)} className="text-xs px-2 py-1.5 rounded" style={{ color: T.text, border: `1px solid ${T.inkLine}` }} title="Télécharger PDF">
                   <Download size={14} /> PDF
                 </button>
                 <a href={whatsappLink(r)} target="_blank" rel="noreferrer" className="text-xs px-2 py-1.5 rounded flex items-center gap-1" style={{ background: T.green, color: T.ink }}>
@@ -98,7 +103,7 @@ export function ReceiptScreen() {
               <a href={whatsappLink(selectedReceipt)} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium" style={{ background: T.green, color: T.ink }}>
                 <Send size={14} /> Envoyer sur WhatsApp
               </a>
-              <button onClick={() => downloadReceiptPDF(selectedReceipt, schoolName, schoolLogo)} className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium" style={{ background: T.paper, color: T.ink }}>
+              <button onClick={() => downloadReceiptPDF(selectedReceipt, schoolName, schoolLogo, schoolStamp)} className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium" style={{ background: T.paper, color: T.ink }}>
                 <Download size={14} /> Télécharger PDF
               </button>
               <button onClick={() => window.print()} className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium" style={{ background: T.gold, color: T.ink }}>
@@ -111,7 +116,15 @@ export function ReceiptScreen() {
       {/* Zone d'impression de TOUS les reçus quand on clique sur Imprimer tout */}
       {!selectedReceipt && (
         <div id="print-area" className="hidden print:block text-center">
-          {receipts.map((r: any) => (
+          {receipts
+            .filter((r: any) => {
+              const term = receiptSearch.toLowerCase();
+              return (
+                r.student?.toLowerCase().includes(term) ||
+                r.receiptNumber?.toLowerCase().includes(term)
+              );
+            })
+            .map((r: any) => (
             <div key={r.id} className="receipt-print break-inside-avoid mb-4">
               <ReceiptCard 
                 school={schoolName} 

@@ -5,13 +5,14 @@ import { money } from "../../utils/helpers";
 import { Field } from "../../common/Field";
 import { useSchoolData } from "../../contexts/SchoolDataContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { addClass, updateClassFees, uploadSchoolLogo, updateSchoolLogo } from "../../../lib/api";
+import { addClass, updateClassFees, uploadSchoolLogo, updateSchoolLogo, uploadSchoolStamp, updateSchoolStamp } from "../../../lib/api";
 
 export function SettingsScreen() {
   const { classes, refreshData } = useSchoolData();
-  const { schoolId, schoolLogo, setSchoolLogo } = useAuth();
+  const { schoolId, schoolLogo, setSchoolLogo, schoolStamp, setSchoolStamp } = useAuth();
   
-  const [uploading, setUploading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingStamp, setUploadingStamp] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [monthlyFee, setMonthlyFee] = useState("");
   const [inscriptionFee, setInscriptionFee] = useState("");
@@ -50,7 +51,7 @@ export function SettingsScreen() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !schoolId) return;
     const file = e.target.files[0];
-    setUploading(true);
+    setUploadingLogo(true);
     try {
       const publicUrl = await uploadSchoolLogo(schoolId, file);
       await updateSchoolLogo(schoolId, publicUrl);
@@ -59,7 +60,23 @@ export function SettingsScreen() {
       console.error("Erreur lors de l'upload du logo", err);
       alert("Erreur lors de l'upload du logo");
     } finally {
-      setUploading(false);
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleStampUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !schoolId) return;
+    const file = e.target.files[0];
+    setUploadingStamp(true);
+    try {
+      const publicUrl = await uploadSchoolStamp(schoolId, file);
+      await updateSchoolStamp(schoolId, publicUrl);
+      setSchoolStamp(publicUrl);
+    } catch (err) {
+      console.error("Erreur lors de l'upload du tampon", err);
+      alert("Erreur lors de l'upload du tampon");
+    } finally {
+      setUploadingStamp(false);
     }
   };
 
@@ -68,22 +85,44 @@ export function SettingsScreen() {
       <h1 className="text-2xl mb-6" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Paramètres</h1>
       
       {/* SECTION LOGO */}
-      <div className="mb-8">
-        <h2 className="text-lg mb-2" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Logo de l'école</h2>
-        <p className="text-xs mb-4" style={{ color: T.muted }}>Ce logo apparaîtra sur tous les reçus générés.</p>
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-            {schoolLogo ? (
-              <img src={schoolLogo} alt="Logo" className="w-full h-full object-contain" />
-            ) : (
-              <span className="text-xs" style={{ color: T.muted }}>Aucun</span>
-            )}
+      <div className="grid md:grid-cols-2 gap-8 mb-8">
+        <div>
+          <h2 className="text-lg mb-2" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Logo de l'école</h2>
+          <p className="text-xs mb-4" style={{ color: T.muted }}>Ce logo apparaîtra en haut à gauche des reçus.</p>
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+              {schoolLogo ? (
+                <img src={schoolLogo} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-xs" style={{ color: T.muted }}>Aucun</span>
+              )}
+            </div>
+            <div>
+              <label className="cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors" style={{ background: T.inkLine, color: T.text }}>
+                {uploadingLogo ? "Upload en cours..." : "Changer le logo"}
+                <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+              </label>
+            </div>
           </div>
-          <div>
-            <label className="cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors" style={{ background: T.inkLine, color: T.text }}>
-              {uploading ? "Upload en cours..." : "Changer le logo"}
-              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
-            </label>
+        </div>
+
+        <div>
+          <h2 className="text-lg mb-2" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Tampon de l'école</h2>
+          <p className="text-xs mb-4" style={{ color: T.muted }}>Ce cachet apparaîtra en bas à droite des reçus (signature).</p>
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+              {schoolStamp ? (
+                <img src={schoolStamp} alt="Tampon" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-xs" style={{ color: T.muted }}>Aucun</span>
+              )}
+            </div>
+            <div>
+              <label className="cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors" style={{ background: T.inkLine, color: T.text }}>
+                {uploadingStamp ? "Upload en cours..." : "Changer le tampon"}
+                <input type="file" accept="image/*" className="hidden" onChange={handleStampUpload} disabled={uploadingStamp} />
+              </label>
+            </div>
           </div>
         </div>
       </div>

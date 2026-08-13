@@ -67,6 +67,28 @@ export async function uploadSchoolLogo(schoolId: string, file: File): Promise<st
   return data.publicUrl;
 }
 
+export async function updateSchoolStamp(schoolId: string, stampUrl: string) {
+  const { error } = await supabase
+    .from("schools")
+    .update({ stamp_url: stampUrl })
+    .eq("id", schoolId);
+  if (error) throw error;
+}
+
+export async function uploadSchoolStamp(schoolId: string, file: File): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `stamp-${schoolId}-${Math.random()}.${fileExt}`;
+  
+  const { error: uploadError } = await supabase.storage
+    .from('logos')
+    .upload(fileName, file, { upsert: true });
+    
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from('logos').getPublicUrl(fileName);
+  return data.publicUrl;
+}
+
 export async function getSchoolForUser(authUserId: string) {
   const { data: user, error: userError } = await supabase
     .from("school_users")
@@ -152,6 +174,36 @@ export async function addStudent(params: {
   fullName: string;
   parentPhone: string;
 }) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    await queueOfflineAction('addStudent', params);
+    
+    // Optimistic update in cache
+    const cache = await getSchoolCache();
+    const fakeId = `offline-student-${Date.now()}`;
+    if (cache) {
+      const cls = cache.classes?.find((c: any) => c.id === params.classId);
+      const student = {
+        id: fakeId,
+        school_id: params.schoolId,
+        class_id: params.classId,
+        full_name: params.fullName,
+        parent_phone: params.parentPhone,
+        status: "actif",
+        name: params.fullName, // Keep compatibility with older cache maps
+        parentPhone: params.parentPhone,
+        classId: params.classId,
+        className: cls ? cls.name : "",
+        dues: [],
+        inscriptionPaid: 0,
+      };
+      
+      cache.students = [student, ...(cache.students || [])];
+      await saveSchoolCache(cache);
+    }
+    
+    return { id: fakeId, full_name: params.fullName, parent_phone: params.parentPhone };
+  }
+
   // 1. Insère l’élève
   const { data: student, error } = await supabase
     .from("students")
@@ -591,6 +643,8 @@ export async function processOfflineQueue() {
         await recordStudentPayment(item.payload);
       } else if (item.action === 'recordInscriptionPayment') {
         await recordInscriptionPayment(item.payload);
+      } else if (item.action === 'addStudent') {
+        await addStudent(item.payload);
       }
       if (item.id) {
         await clearOfflineAction(item.id);
