@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  padding: 0;
+  margin: 0;
+  background: #0F1C30;
+}
+
+/* ============================================================
+   IMPRESSION — Noir & Blanc professionnel
+   L'impression masque toute l'interface et ne montre que les
+   reçus, en noir et blanc, optimisés pour le papier A4.
+   ============================================================ */
+@media print {
+  /* Masquer uniquement les éléments hors du conteneur principal si nécessaire, 
+     mais on va plutôt utiliser des classes spécifiques pour cacher l'UI */
+  body > *:not(div) {
+    display: none !important;
+  }
+
+  /* Fond blanc, police noire */
+  html, body {
+    background: white !important;
+    color: black !important;
+    font-family: 'Work Sans', Arial, sans-serif !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Zone d'impression des reçus */
+  #print-area {
+    display: block !important;
+    width: 100%;
+  }
+
+  /* Chaque reçu sur la page */
+  /* Chaque reçu sur la page */
+  .receipt-print {
+    display: inline-block !important;
+    margin: 5mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Cacher les boutons d'action dans la modal */
+  .no-print {
+    display: none !important;
+  }
+}

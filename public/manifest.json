@@ -1,0 +1,17 @@
+{
+  "name": "Wallu School",
+  "short_name": "Wallu",
+  "description": "Application de gestion pour écoles",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#F3B236",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
