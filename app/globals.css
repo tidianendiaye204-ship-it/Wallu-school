@@ -30,17 +30,22 @@ html, body {
     padding: 0;
   }
 
+  @page {
+    margin: 10mm;
+  }
+
   /* Zone d'impression des reçus */
   #print-area {
-    display: block !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10mm;
     width: 100%;
+    align-items: start;
   }
 
   /* Chaque reçu sur la page */
-  /* Chaque reçu sur la page */
   .receipt-print {
-    display: inline-block !important;
-    margin: 5mm;
+    margin: 0;
     page-break-inside: avoid;
     break-inside: avoid;
     -webkit-print-color-adjust: exact;

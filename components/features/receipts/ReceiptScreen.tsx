@@ -88,6 +88,8 @@ export function ReceiptScreen() {
             <div id="print-area">
               <ReceiptCard 
                 school={schoolName} 
+                schoolLogo={schoolLogo}
+                schoolStamp={schoolStamp}
                 student={selectedReceipt.student} 
                 className={selectedReceipt.className} 
                 amountDue={selectedReceipt.amountDue} 
@@ -128,6 +130,8 @@ export function ReceiptScreen() {
             <div key={r.id} className="receipt-print break-inside-avoid mb-4">
               <ReceiptCard 
                 school={schoolName} 
+                schoolLogo={schoolLogo}
+                schoolStamp={schoolStamp}
                 student={r.student} 
                 className={r.className} 
                 amountDue={r.amountDue} 
