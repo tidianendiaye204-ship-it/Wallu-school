@@ -43,7 +43,7 @@ export function ChatModal() {
       const period = getCurrentAcademicPeriod();
       let expectedAmount = 0;
       let collectedAmount = 0;
-      let unpaidStudents: any[] = [];
+      const unpaidStudents: any[] = [];
 
       students.forEach((s: any) => {
         const cls = classes.find((c: any) => c.id === s.classId);

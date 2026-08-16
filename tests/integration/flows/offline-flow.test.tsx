@@ -1,6 +1,7 @@
 import { mockSupabase, resetSupabaseMocks } from "../../mocks/supabase";
 
 jest.mock("../../../lib/supabaseClient", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   supabase: require("../../mocks/supabase").mockSupabase
 }));
 

@@ -25,7 +25,7 @@ export function AIBriefWidget() {
       
       let expectedAmount = 0;
       let collectedAmount = 0;
-      let unpaidStudents: any[] = [];
+      const unpaidStudents: any[] = [];
 
       students.forEach(s => {
         const cls = classes.find(c => c.id === s.classId);

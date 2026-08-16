@@ -36,7 +36,7 @@ export function generateAcademicMonths() {
   if (current.getMonth() < 7) startYear--;
   
   const months = [];
-  let d = new Date(startYear, 9, 1); // Octobre
+  const d = new Date(startYear, 9, 1); // Octobre
   for (let i = 0; i < 10; i++) { // Octobre à Juillet = 10 mois
     months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
     d.setMonth(d.getMonth() + 1);
