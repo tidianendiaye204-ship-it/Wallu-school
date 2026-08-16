@@ -43,7 +43,8 @@ export function SettingsScreen() {
       await addClass({ schoolId, name: newName, monthlyFee: Number(newMonthly) || 0, inscriptionFee: Number(newInscription) || 0, academicYear: new Date().getFullYear().toString() });
       refreshData();
       setNewName(""); setNewMonthly(""); setNewInscription("");
-    } catch (err) {
+    } catch (err: any) {
+      alert("Erreur lors de l'ajout: " + err.message);
       console.error(err);
     }
   };

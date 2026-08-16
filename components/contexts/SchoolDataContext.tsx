@@ -168,8 +168,9 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
           inscriptionPayments: allInscrPay
         });
 
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        alert("Erreur générale: " + err.message);
+        console.error("Erreur détaillée:", err);
       }
       setIsLoading(false);
     }

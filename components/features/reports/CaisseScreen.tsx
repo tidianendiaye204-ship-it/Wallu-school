@@ -17,7 +17,8 @@ export function CaisseScreen() {
         setIsLoading(true);
         const { movements } = await getCashJournal(schoolId);
         setMovements(movements);
-      } catch (e) {
+      } catch (e: any) {
+        alert("Erreur Caisse: " + e.message);
         console.error(e);
       } finally {
         setIsLoading(false);
