@@ -28,7 +28,10 @@ export async function POST(req: Request) {
     const anthropic = new Anthropic({ apiKey });
     
     // Convert generic messages to Anthropic messages format
-    const anthropicMessages = messages.map((m: any) => ({
+    // Anthropic requires the first message to be from a user, so we filter out any initial assistant greetings at the start.
+    const validMessages = messages[0]?.role === 'assistant' ? messages.slice(1) : messages;
+    
+    const anthropicMessages = validMessages.map((m: any) => ({
       role: m.role === 'assistant' ? 'assistant' : 'user',
       content: m.content
     }));
@@ -51,7 +54,7 @@ INSTRUCTIONS IMPORTANTES :
 4. Ne mentionne pas que tu es un modèle d'IA. Agis comme le bras droit du directeur.`;
 
     const msg = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-3-haiku-20240307",
       max_tokens: 1000,
       temperature: 0.7,
       system: systemPrompt,
