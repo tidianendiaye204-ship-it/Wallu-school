@@ -57,7 +57,7 @@ Contraintes IMPÉRATIVES :
 
     // 5. Appel à Claude
     const msg = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 250,
       temperature: 0.5,
       system: "Tu es un assistant de direction d'école au Sénégal. Tu es concis, précis et focalisé sur la trésorerie.",
