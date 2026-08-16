@@ -34,8 +34,7 @@ export function NotificationCenter() {
     <div className="relative" ref={popupRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)} 
-        className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
-        style={{ color: T.text }}
+        className="relative p-2 rounded-full hover:bg-white/10 transition-colors text-text"
       >
         <Bell size={20} />
         {unreadCount > 0 && (
@@ -47,18 +46,18 @@ export function NotificationCenter() {
 
       {isOpen && (
         <div className="absolute right-0 md:right-auto md:left-0 mt-2 w-80 sm:w-96 rounded-xl border shadow-xl z-50 overflow-hidden flex flex-col" style={{ background: T.ink, borderColor: T.inkLine, maxHeight: '80vh' }}>
-          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-            <h3 className="font-semibold" style={{ color: T.text }}>Notifications</h3>
+          <div className="p-4 border-b flex items-center justify-between border-inkLine bg-inkSoft">
+            <h3 className="font-semibold text-text">Notifications</h3>
             <div className="flex gap-2">
               {unreadCount > 0 && (
-                <button onClick={markAllAsRead} className="text-xs hover:underline" style={{ color: T.gold }}>
+                <button onClick={markAllAsRead} className="text-xs hover:underline text-gold">
                   Tout marquer comme lu
                 </button>
               )}
             </div>
           </div>
 
-          <div className="flex flex-wrap px-4 py-3 gap-2 border-b" style={{ borderColor: T.inkLine }}>
+          <div className="flex flex-wrap px-4 py-3 gap-2 border-b border-inkLine">
             <FilterBtn label="Toutes" active={filter === 'all'} onClick={() => setFilter('all')} />
             <FilterBtn label="Non lues" active={filter === 'unread'} onClick={() => setFilter('unread')} />
             <FilterBtn label="Paiements" active={filter === 'payments'} onClick={() => setFilter('payments')} />
@@ -67,7 +66,7 @@ export function NotificationCenter() {
 
           <div className="overflow-y-auto flex-1 p-2 space-y-1">
             {filtered.length === 0 ? (
-              <div className="text-center py-8 text-sm" style={{ color: T.muted }}>
+              <div className="text-center py-8 text-sm text-muted">
                 Aucune notification
               </div>
             ) : (
@@ -78,8 +77,8 @@ export function NotificationCenter() {
           </div>
 
           {notifications.length > 0 && (
-            <div className="p-2 border-t text-center" style={{ borderColor: T.inkLine }}>
-              <button onClick={clearAll} className="text-xs hover:underline" style={{ color: T.muted }}>
+            <div className="p-2 border-t text-center border-inkLine">
+              <button onClick={clearAll} className="text-xs hover:underline text-muted">
                 Effacer tout l'historique
               </button>
             </div>
@@ -130,8 +129,8 @@ function NotificationItem({ notification, onRead }: { notification: AppNotificat
         <Icon size={16} />
       </div>
       <div className="flex-1 pr-6">
-        <p className="text-sm font-semibold mb-0.5" style={{ color: T.text }}>{notification.title}</p>
-        <p className="text-xs mb-2 leading-relaxed" style={{ color: T.muted }}>{notification.message}</p>
+        <p className="text-sm font-semibold mb-0.5 text-text">{notification.title}</p>
+        <p className="text-xs mb-2 leading-relaxed text-muted">{notification.message}</p>
         <p className="text-[10px]" style={{ color: `${T.muted}80` }}>{dateStr} à {timeStr}</p>
       </div>
       {!notification.read && (

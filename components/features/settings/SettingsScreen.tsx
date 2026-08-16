@@ -82,19 +82,19 @@ export function SettingsScreen() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl mb-6" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Paramètres</h1>
+      <h1 className="text-2xl mb-6 font-serif text-text font-semibold">Paramètres</h1>
       
       {/* SECTION LOGO */}
       <div className="grid md:grid-cols-2 gap-8 mb-8">
         <div>
-          <h2 className="text-lg mb-2" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Logo de l'école</h2>
-          <p className="text-xs mb-4" style={{ color: T.muted }}>Ce logo apparaîtra en haut à gauche des reçus.</p>
+          <h2 className="text-lg mb-2 font-serif text-text font-semibold">Logo de l'école</h2>
+          <p className="text-xs mb-4 text-muted">Ce logo apparaîtra en haut à gauche des reçus.</p>
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+            <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden border-inkLine bg-inkSoft">
               {schoolLogo ? (
                 <img src={schoolLogo} alt="Logo" className="w-full h-full object-contain" />
               ) : (
-                <span className="text-xs" style={{ color: T.muted }}>Aucun</span>
+                <span className="text-xs text-muted">Aucun</span>
               )}
             </div>
             <div>
@@ -107,14 +107,14 @@ export function SettingsScreen() {
         </div>
 
         <div>
-          <h2 className="text-lg mb-2" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Tampon de l'école</h2>
-          <p className="text-xs mb-4" style={{ color: T.muted }}>Ce cachet apparaîtra en bas à droite des reçus (signature).</p>
+          <h2 className="text-lg mb-2 font-serif text-text font-semibold">Tampon de l'école</h2>
+          <p className="text-xs mb-4 text-muted">Ce cachet apparaîtra en bas à droite des reçus (signature).</p>
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+            <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden border-inkLine bg-inkSoft">
               {schoolStamp ? (
                 <img src={schoolStamp} alt="Tampon" className="w-full h-full object-contain" />
               ) : (
-                <span className="text-xs" style={{ color: T.muted }}>Aucun</span>
+                <span className="text-xs text-muted">Aucun</span>
               )}
             </div>
             <div>
@@ -127,26 +127,26 @@ export function SettingsScreen() {
         </div>
       </div>
 
-      <hr className="my-8" style={{ borderColor: T.inkLine }} />
+      <hr className="my-8 border-inkLine" />
 
-      <h2 className="text-lg mb-2" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Niveaux et frais</h2>
-      <p className="text-xs mb-6" style={{ color: T.muted }}>Définissez la mensualité et les frais d'inscription pour chaque niveau.</p>
+      <h2 className="text-lg mb-2 font-serif text-text font-semibold">Niveaux et frais</h2>
+      <p className="text-xs mb-6 text-muted">Définissez la mensualité et les frais d'inscription pour chaque niveau.</p>
 
-      <div className="rounded-lg border overflow-hidden mb-6" style={{ borderColor: T.inkLine }}>
+      <div className="rounded-lg border overflow-hidden mb-6 border-inkLine">
         {classes.map((c: any) => (
-          <div key={c.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+          <div key={c.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0 border-inkLine bg-inkSoft">
             {editing === c.id ? (
               <div className="flex items-center gap-3 flex-wrap w-full">
-                <span className="text-sm w-28" style={{ color: T.text }}>{c.name}</span>
+                <span className="text-sm w-28 text-text">{c.name}</span>
                 <input type="number" value={monthlyFee} onChange={(e) => setMonthlyFee(e.target.value)} placeholder="Mensualité" className="rounded-md px-2 py-1.5 text-xs border w-28" style={{ borderColor: T.inkLine, background: "#0C1626", color: T.text }} />
                 <input type="number" value={inscriptionFee} onChange={(e) => setInscriptionFee(e.target.value)} placeholder="Inscription" className="rounded-md px-2 py-1.5 text-xs border w-28" style={{ borderColor: T.inkLine, background: "#0C1626", color: T.text }} />
-                <button onClick={() => save(c.id)} className="text-xs px-3 py-1.5 rounded-md" style={{ background: T.gold, color: T.ink }}>Enregistrer</button>
+                <button onClick={() => save(c.id)} className="text-xs px-3 py-1.5 rounded-md bg-gold text-ink">Enregistrer</button>
               </div>
             ) : (
               <>
                 <div>
-                  <p className="text-sm" style={{ color: T.text }}>{c.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: T.muted }}>Mensualité {money(c.monthlyFee)} · Inscription {money(c.inscriptionFee || 0)}</p>
+                  <p className="text-sm text-text">{c.name}</p>
+                  <p className="text-xs mt-0.5 text-muted">Mensualité {money(c.monthlyFee)} · Inscription {money(c.inscriptionFee || 0)}</p>
                 </div>
                 <button onClick={() => startEdit(c)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md" style={{ border: `1px solid ${T.inkLine}`, color: T.gold }}>
                   <Pencil size={12} /> Modifier
@@ -157,8 +157,8 @@ export function SettingsScreen() {
         ))}
       </div>
 
-      <div className="rounded-lg p-5 border" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-        <p className="text-sm mb-3" style={{ color: T.text }}>Ajouter un niveau</p>
+      <div className="rounded-lg p-5 border border-inkLine bg-inkSoft">
+        <p className="text-sm mb-3 text-text">Ajouter un niveau</p>
         <div className="grid sm:grid-cols-3 gap-3">
           <Field label="Nom du niveau" value={newName} onChange={(e: any) => setNewName(e.target.value)} placeholder="Ex : CI, CP, CE1..." />
           <Field label="Mensualité (FCFA)" type="number" value={newMonthly} onChange={(e: any) => setNewMonthly(e.target.value)} />
@@ -166,8 +166,7 @@ export function SettingsScreen() {
         </div>
         <button
           onClick={handleAddClass}
-          className="mt-4 flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium"
-          style={{ background: T.gold, color: T.ink }}
+          className="mt-4 flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium bg-gold text-ink"
         >
           <Plus size={16} /> Ajouter le niveau
         </button>

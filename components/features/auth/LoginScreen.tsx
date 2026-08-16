@@ -23,15 +23,15 @@ export function LoginScreen({ onGoRegister }: { onGoRegister: () => void }) {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ background: T.ink }}>
+    <div className="min-h-screen w-full flex items-center justify-center px-6 bg-ink">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <Receipt size={24} style={{ color: T.gold }} />
+          <Receipt size={24} className="text-gold" />
           <span className="text-2xl font-semibold" style={{ fontFamily: "'Fraunces', serif", color: T.text }}>Wallu School</span>
         </div>
-        <div className="rounded-lg p-8 border shadow-2xl" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-          <h2 className="text-xl mb-1" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Connexion</h2>
-          <p className="text-sm mb-6" style={{ color: T.muted }}>Accédez à votre espace de gestion.</p>
+        <div className="rounded-lg p-8 border shadow-2xl border-inkLine bg-inkSoft">
+          <h2 className="text-xl mb-1 font-serif text-text font-semibold">Connexion</h2>
+          <p className="text-sm mb-6 text-muted">Accédez à votre espace de gestion.</p>
           
           {error && (
             <div className="mb-4 rounded-md px-3 py-2.5 text-xs text-center" style={{ background: "#2D1A1A", color: T.rust, border: `1px solid ${T.rust}` }}>
@@ -47,8 +47,8 @@ export function LoginScreen({ onGoRegister }: { onGoRegister: () => void }) {
             </button>
           </form>
           <div className="mt-6 text-center">
-            <button onClick={onGoRegister} className="text-sm hover:underline" style={{ color: T.muted }}>
-              Nouvelle école ? <span style={{ color: T.gold }}>Créer mon compte</span>
+            <button onClick={onGoRegister} className="text-sm hover:underline text-muted">
+              Nouvelle école ? <span className="text-gold">Créer mon compte</span>
             </button>
           </div>
         </div>

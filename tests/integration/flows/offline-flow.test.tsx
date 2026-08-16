@@ -17,12 +17,12 @@ jest.mock("../../../lib/db", () => ({
     mockCache = { ...cache };
     return Promise.resolve();
   }),
-  queueOfflineAction: jest.fn().mockImplementation((action, payload) => {
+  queueOfflineAction: jest.fn().mockImplementation((schoolId, action, payload) => {
     const id = Date.now();
-    mockQueue.push({ id, action, payload });
+    mockQueue.push({ id, schoolId, action, payload });
     return Promise.resolve();
   }),
-  getOfflineQueue: jest.fn().mockImplementation(() => Promise.resolve([...mockQueue])),
+  getOfflineQueue: jest.fn().mockImplementation((schoolId) => Promise.resolve(mockQueue.filter(q => q.schoolId === schoolId))),
   clearOfflineAction: jest.fn().mockImplementation((id) => {
     mockQueue = mockQueue.filter(item => item.id !== id);
     return Promise.resolve();
@@ -106,7 +106,7 @@ describe("Offline Flow - Payment", () => {
     mockSupabase.then.mockImplementationOnce((cb) => Promise.resolve({ data: [{ period: "2024-05", amount_due: 25000, amount_allocated: 25000 }], error: null }).then(cb));
     mockSupabase.single.mockResolvedValueOnce({ data: { id: "rec2" }, error: null });
 
-    await processOfflineQueue();
+    await processOfflineQueue("school1");
 
     // La file est vidée
     expect(mockQueue.length).toBe(0);

@@ -1,27 +1,30 @@
-import React, { useMemo } from "react";
-import { Download } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Download, Loader2 } from "lucide-react";
 import { T } from "../../utils/theme";
 import { money } from "../../utils/helpers";
-import { useSchoolData } from "../../contexts/SchoolDataContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { getCashJournal } from "../../../lib/api";
 
 export function CaisseScreen() {
-  const { receipts, staffPayments, expenses } = useSchoolData();
+  const { schoolId } = useAuth();
+  const [movements, setMovements] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const movements = useMemo(() => {
-    const list = [
-      ...receipts.map((r: any) => ({
-        id: r.id, date: new Date(), label: `${r.student} — ${r.kind === "inscription" ? "Inscription" : "Mensualité"} (${r.className})`,
-        amount: r.amountPaid, type: "entree",
-      })),
-      ...staffPayments.map((p: any) => ({
-        id: p.id, date: new Date(), label: `Salaire — ${p.name}`, amount: p.amount, type: "sortie",
-      })),
-      ...expenses.map((e: any) => ({
-        id: e.id, date: new Date(e.date), label: e.label, amount: e.amount, type: "sortie",
-      })),
-    ];
-    return list.sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [receipts, staffPayments, expenses]);
+  useEffect(() => {
+    if (!schoolId) return;
+    async function load() {
+      try {
+        setIsLoading(true);
+        const { movements } = await getCashJournal(schoolId);
+        setMovements(movements);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    load();
+  }, [schoolId]);
 
   let running = 0;
   const withBalance = [...movements].reverse().map((m) => {
@@ -53,23 +56,28 @@ export function CaisseScreen() {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Journal de caisse</h1>
+        <h1 className="text-2xl font-serif text-text font-semibold">Journal de caisse</h1>
         {withBalance.length > 0 && (
           <button onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs rounded-md px-3 py-2" style={{ background: T.inkSoft, color: T.text, border: `1px solid ${T.inkLine}` }}>
             <Download size={14} /> Exporter CSV
           </button>
         )}
       </div>
-      <p className="text-xs mb-6" style={{ color: T.muted }}>Toutes les entrées et sorties, dans l'ordre — la vraie photo de la caisse.</p>
-      {withBalance.length === 0 ? (
-        <p className="text-sm" style={{ color: T.muted }}>Aucun mouvement pour l'instant.</p>
+      <p className="text-xs mb-6 text-muted">Toutes les entrées et sorties, dans l'ordre — la vraie photo de la caisse.</p>
+      
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="animate-spin text-[#D4AF37]" />
+        </div>
+      ) : withBalance.length === 0 ? (
+        <p className="text-sm text-muted">Aucun mouvement pour l'instant.</p>
       ) : (
-        <div className="rounded-lg border overflow-hidden" style={{ borderColor: T.inkLine }}>
+        <div className="rounded-lg border overflow-hidden border-inkLine">
           {withBalance.map((m) => (
-            <div key={m.type + m.id} className="flex items-center justify-between px-5 py-3 border-b last:border-b-0" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+            <div key={m.type + m.id} className="flex items-center justify-between px-5 py-3 border-b last:border-b-0 border-inkLine bg-inkSoft">
               <div>
-                <p className="text-sm" style={{ color: T.text }}>{m.label}</p>
-                <p className="text-xs mt-0.5" style={{ color: T.muted }}>{m.date.toLocaleDateString("fr-FR")} · solde : {money(m.balance)}</p>
+                <p className="text-sm text-text">{m.label}</p>
+                <p className="text-xs mt-0.5 text-muted">{new Date(m.date).toLocaleDateString("fr-FR")} · solde : {money(m.balance)}</p>
               </div>
               <p className="text-sm" style={{ fontFamily: "'IBM Plex Mono', monospace", color: m.type === "entree" ? T.green : T.rust }}>
                 {m.type === "entree" ? "+" : "-"}{money(m.amount)}

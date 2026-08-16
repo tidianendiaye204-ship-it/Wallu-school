@@ -10,6 +10,7 @@ export function ReceiptScreen() {
   const { receipts } = useSchoolData();
   const { schoolName, schoolLogo, schoolStamp } = useAuth();
   const [receiptSearch, setReceiptSearch] = useState("");
+  const [timeFilter, setTimeFilter] = useState("today");
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
 
   const whatsappLink = (r: any) => {
@@ -20,16 +21,27 @@ export function ReceiptScreen() {
     return `https://wa.me/${r.phone}?text=${text}`;
   };
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 print:hidden">
         <div>
-          <h1 className="text-2xl mb-1" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Reçus</h1>
-          <p className="text-sm" style={{ color: T.muted }}>Historique des paiements</p>
+          <h1 className="text-2xl mb-1 font-serif text-text font-semibold">Reçus</h1>
+          <p className="text-sm text-muted">Historique des paiements</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-72">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.muted }} />
+          <select 
+            value={timeFilter} 
+            onChange={e => setTimeFilter(e.target.value)} 
+            className="px-3 py-2 rounded-md text-sm border focus:outline-none" 
+            style={{ background: "#0C1626", borderColor: T.inkLine, color: T.text }}
+          >
+            <option value="today">Aujourd'hui</option>
+            <option value="all">Tous les reçus</option>
+          </select>
+          <div className="relative w-full sm:w-64">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               type="text"
               placeholder="Rechercher élève ou reçu..."
@@ -39,20 +51,21 @@ export function ReceiptScreen() {
               style={{ background: "#0C1626", borderColor: T.inkLine, color: T.text }}
             />
           </div>
-          <button onClick={() => window.print()} className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium whitespace-nowrap" style={{ background: T.gold, color: T.ink }}>
-            <Printer size={16} /> Imprimer les reçus affichés
+          <button onClick={() => window.print()} className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium whitespace-nowrap bg-gold text-ink">
+            <Printer size={16} /> Imprimer
           </button>
         </div>
       </div>
 
       {receipts.length === 0 ? (
-        <div className="text-center py-20 rounded-lg border border-dashed" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-          <p className="text-sm" style={{ color: T.muted }}>Aucun reçu n'a été généré pour le moment.</p>
+        <div className="text-center py-20 rounded-lg border border-dashed border-inkLine bg-inkSoft">
+          <p className="text-sm text-muted">Aucun reçu n'a été généré pour le moment.</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4 print:hidden">
           {receipts
             .filter((r: any) => {
+              if (timeFilter === "today" && (!r.date || !r.date.startsWith(todayStr))) return false;
               const term = receiptSearch.toLowerCase();
               return (
                 r.student?.toLowerCase().includes(term) ||
@@ -60,10 +73,10 @@ export function ReceiptScreen() {
               );
             })
             .map((r: any) => (
-            <div key={r.id} className="rounded-lg p-4 border flex items-center justify-between" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+            <div key={r.id} className="rounded-lg p-4 border flex items-center justify-between border-inkLine bg-inkSoft">
               <div>
-                <p className="text-sm" style={{ color: T.text }}>{r.student}</p>
-                <p className="text-xs" style={{ color: T.muted }}>
+                <p className="text-sm text-text">{r.student}</p>
+                <p className="text-xs text-muted">
                   <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{r.receiptNumber}</span> • {money(r.amountPaid)} — {r.className}{r.kind === "inscription" ? " (ins.)" : ""}
                 </p>
               </div>
@@ -108,7 +121,7 @@ export function ReceiptScreen() {
               <button onClick={() => downloadReceiptPDF(selectedReceipt, schoolName, schoolLogo, schoolStamp)} className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium" style={{ background: T.paper, color: T.ink }}>
                 <Download size={14} /> Télécharger PDF
               </button>
-              <button onClick={() => window.print()} className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium" style={{ background: T.gold, color: T.ink }}>
+              <button onClick={() => window.print()} className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium bg-gold text-ink">
                 <Printer size={14} /> Imprimer
               </button>
             </div>

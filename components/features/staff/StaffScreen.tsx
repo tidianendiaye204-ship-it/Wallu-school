@@ -51,7 +51,7 @@ export function StaffScreen() {
 
   const handlePay = async (m: any) => {
     if (!schoolId) return;
-    const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period === period).reduce((a: any, p: any) => a + p.amount, 0);
+    const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period && p.period.startsWith(period.substring(0, 7))).reduce((a: any, p: any) => a + p.amount, 0);
     const remaining = m.salary - paidThisMonth;
     if (remaining <= 0) return;
     
@@ -59,7 +59,7 @@ export function StaffScreen() {
     setPayError("");
     
     try {
-      await paySalary({ schoolId, staffId: m.id, period: period + "-01", amount: remaining });
+      await paySalary({ schoolId, staffId: m.id, period, amount: remaining });
       addToast('success', `Salaire de ${money(remaining)} payé à ${m.name}.`, 'Salaire payé');
       addNotification({ type: 'success', title: 'Salaire versé', message: `${money(remaining)} pour ${m.name}.`, category: 'payments' });
       refreshData();
@@ -74,7 +74,7 @@ export function StaffScreen() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Personnel</h1>
+        <h1 className="text-2xl font-serif text-text font-semibold">Personnel</h1>
         <button
           onClick={() => { setShowForm(!showForm); setFormError(""); }}
           className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium"
@@ -85,8 +85,8 @@ export function StaffScreen() {
       </div>
 
       {showForm && (
-        <div className="rounded-lg p-5 border mb-6" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-          <p className="text-sm font-medium mb-4" style={{ color: T.text }}>Nouvel employé / professeur</p>
+        <div className="rounded-lg p-5 border mb-6 border-inkLine bg-inkSoft">
+          <p className="text-sm font-medium mb-4 text-text">Nouvel employé / professeur</p>
           {formError && (
             <div className="mb-3 rounded-md px-3 py-2.5 text-xs" style={{ background: "#2D1A1A", color: T.rust, border: `1px solid ${T.rust}` }}>
               ⚠ {formError}
@@ -96,7 +96,7 @@ export function StaffScreen() {
             <Field icon={User} label="Nom complet" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="Ex : Moussa Diallo" />
             <Field icon={Phone} label="Téléphone (optionnel)" value={phone} onChange={(e: any) => setPhone(e.target.value)} placeholder="77 000 00 00" />
             <div>
-              <span className="text-xs uppercase tracking-wide block mb-1.5" style={{ color: T.muted }}>Rôle / Poste</span>
+              <span className="text-xs uppercase tracking-wide block mb-1.5 text-muted">Rôle / Poste</span>
               <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full rounded-md px-3 py-2.5 border text-sm" style={{ borderColor: T.inkLine, background: "#0C1626", color: T.text }}>
                 <option value="professeur">Professeur</option>
                 <option value="directeur">Directeur</option>
@@ -126,36 +126,36 @@ export function StaffScreen() {
       )}
 
       {staff.length === 0 ? (
-        <div className="rounded-lg p-8 border text-center" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+        <div className="rounded-lg p-8 border text-center border-inkLine bg-inkSoft">
           <GraduationCap size={32} style={{ color: T.muted, margin: "0 auto 12px" }} />
-          <p className="text-sm mb-1" style={{ color: T.text }}>Aucun professeur enregistré</p>
-          <p className="text-xs mb-4" style={{ color: T.muted }}>Ajoutez votre équipe pour suivre les paiements de salaires.</p>
-          <button onClick={() => setShowForm(true)} className="rounded-md px-4 py-2 text-sm font-medium mx-auto flex items-center justify-center gap-1.5" style={{ background: T.gold, color: T.ink }}>
+          <p className="text-sm mb-1 text-text">Aucun professeur enregistré</p>
+          <p className="text-xs mb-4 text-muted">Ajoutez votre équipe pour suivre les paiements de salaires.</p>
+          <button onClick={() => setShowForm(true)} className="rounded-md px-4 py-2 text-sm font-medium mx-auto flex items-center justify-center gap-1.5 bg-gold text-ink">
             <UserPlus size={14} /> Ajouter un employé
           </button>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden" style={{ borderColor: T.inkLine }}>
+        <div className="rounded-lg border overflow-hidden border-inkLine">
           {staff.map((m: any) => {
-            const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period === period).reduce((a: any, p: any) => a + p.amount, 0);
+            const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period && p.period.startsWith(period.substring(0, 7))).reduce((a: any, p: any) => a + p.amount, 0);
             const remaining = m.salary - paidThisMonth;
             const isPaying = payingId === m.id;
             return (
-              <div key={m.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+              <div key={m.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0 border-inkLine bg-inkSoft">
                 <div className="flex-1 min-w-0 mr-4">
-                  <p className="text-sm font-medium truncate" style={{ color: T.text }}>{m.name}</p>
-                  <p className="text-xs mt-0.5 capitalize" style={{ color: T.muted }}>
+                  <p className="text-sm font-medium truncate text-text">{m.name}</p>
+                  <p className="text-xs mt-0.5 capitalize text-muted">
                     {m.role} · Salaire&nbsp;
                     <span style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.gold }}>{money(m.salary)}</span>
                   </p>
                   {paidThisMonth > 0 && paidThisMonth < m.salary && (
-                    <p className="text-xs mt-0.5" style={{ color: T.rust }}>Acompte versé : {money(paidThisMonth)} · Reste {money(remaining)}</p>
+                    <p className="text-xs mt-0.5 text-rust">Acompte versé : {money(paidThisMonth)} · Reste {money(remaining)}</p>
                   )}
                 </div>
                 {remaining <= 0 ? (
                   <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: "rgba(63,143,108,0.12)" }}>
-                    <Check size={13} style={{ color: T.green }} />
-                    <span className="text-xs font-medium" style={{ color: T.green }}>Payé</span>
+                    <Check size={13} className="text-green" />
+                    <span className="text-xs font-medium text-green">Payé</span>
                   </div>
                 ) : (
                   <button

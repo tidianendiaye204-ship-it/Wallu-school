@@ -48,10 +48,10 @@ export function AddStudentModal({ classId, onClose }: { classId: string; onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="w-full max-w-sm rounded-lg p-6 border" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+      <div className="w-full max-w-sm rounded-lg p-6 border border-inkLine bg-inkSoft">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Ajouter un élève</h3>
-          <button onClick={onClose} style={{ color: T.muted }}><X size={18} /></button>
+          <h3 className="text-lg font-serif text-text font-semibold">Ajouter un élève</h3>
+          <button onClick={onClose} className="text-muted"><X size={18} /></button>
         </div>
 
         {error && (
@@ -63,7 +63,7 @@ export function AddStudentModal({ classId, onClose }: { classId: string; onClose
         <div className="space-y-4">
           <Field icon={User} label="Nom complet de l'élève" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="Ex : Ibrahima Ba" />
           <label className="block">
-            <span className="text-xs uppercase tracking-wide" style={{ color: T.muted }}>Classe</span>
+            <span className="text-xs uppercase tracking-wide text-muted">Classe</span>
             <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="w-full mt-1.5 rounded-md px-3 py-2.5 border text-sm" style={{ borderColor: T.inkLine, background: "#0C1626", color: T.text }}>
               {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>

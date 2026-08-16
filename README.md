@@ -29,12 +29,7 @@ npm run dev
 
 Ouvre [http://localhost:3000](http://localhost:3000).
 
-⚠️ **Important** : `components/WalluSchoolApp.tsx` utilise encore des
-données de démonstration en mémoire (`SEED_CLASSES`, `SEED_STUDENTS`...).
-Les fonctions de `lib/api.ts` sont prêtes à l'emploi mais pas encore
-branchées à l'interface — suis le tableau de correspondance dans
-`lib/api.ts` (commentaires) pour remplacer chaque `useState(SEED_*)`
-par un appel Supabase. C'est l'étape suivante à faire ensemble.
+⚠️ **Note** : L'interface est désormais entièrement branchée à Supabase via `lib/api.ts` et utilise IndexedDB pour un affichage instantané et le support hors-ligne.
 
 ## 4. Installer l'app comme PWA
 

@@ -56,7 +56,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
 
       // 1. Lire immédiatement depuis le cache local (IndexedDB) pour un affichage instantané
       try {
-        const cache = await getSchoolCache();
+        const cache = await getSchoolCache(schoolId);
         if (cache) {
           setClasses(cache.classes || []);
           setStudents(cache.students || []);
@@ -150,13 +150,14 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
              nextPeriodLabel: periodLabel,
              phone: p?.students?.parent_phone,
              method: p?.method,
-             kind: "mensualite"
+             kind: "mensualite",
+             date: p?.paid_at
            };
         });
         setReceipts(loadedReceipts);
 
         // 3. Sauvegarder les données fraîches dans le cache local
-        await saveSchoolCache({
+        await saveSchoolCache(schoolId, {
           classes: loadedClasses,
           students: loadedStudents,
           staff: loadedStaff,

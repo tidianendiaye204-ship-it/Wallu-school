@@ -11,6 +11,7 @@ interface AuthContextType {
   setSchoolLogo: (url: string | null) => void;
   schoolStamp: string | null;
   setSchoolStamp: (url: string | null) => void;
+  schoolStatus: string;
   loading: boolean;
 }
 
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   setSchoolLogo: () => {},
   schoolStamp: null,
   setSchoolStamp: () => {},
+  schoolStatus: "actif",
   loading: true,
 });
 
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [schoolName, setSchoolName] = useState("");
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [schoolStamp, setSchoolStamp] = useState<string | null>(null);
+  const [schoolStatus, setSchoolStatus] = useState("actif");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSchoolName(school.name);
             setSchoolLogo(school.logo_url || null);
             setSchoolStamp(school.stamp_url || null);
+            setSchoolStatus(school.status || "actif");
           }
           setLoading(false);
         }).catch(err => {
@@ -64,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSchoolName(school.name);
             setSchoolLogo(school.logo_url || null);
             setSchoolStamp(school.stamp_url || null);
+            setSchoolStatus(school.status || "actif");
           }
         });
       } else {
@@ -71,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSchoolName("");
         setSchoolLogo(null);
         setSchoolStamp(null);
+        setSchoolStatus("actif");
       }
     });
 
@@ -78,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user, schoolId, schoolName, schoolLogo, setSchoolLogo, schoolStamp, setSchoolStamp, loading }}>
+    <AuthContext.Provider value={{ session, user: session?.user, schoolId, schoolName, schoolLogo, setSchoolLogo, schoolStamp, setSchoolStamp, schoolStatus, loading }}>
       {children}
     </AuthContext.Provider>
   );

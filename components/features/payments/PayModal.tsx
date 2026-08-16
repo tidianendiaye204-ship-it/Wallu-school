@@ -59,19 +59,19 @@ export function PayModal({ student, monthlyFee, onClose }: { student: any; month
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="w-full max-w-sm rounded-lg p-6 border" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+      <div className="w-full max-w-sm rounded-lg p-6 border border-inkLine bg-inkSoft">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Paiement — {student.name}</h3>
-          <button onClick={onClose} style={{ color: T.muted }}><X size={18} /></button>
+          <h3 className="text-lg font-serif text-text font-semibold">Paiement — {student.name}</h3>
+          <button onClick={onClose} className="text-muted"><X size={18} /></button>
         </div>
-        <p className="text-xs mb-4" style={{ color: T.muted }}>Mensualité de base : {money(monthlyFee)}</p>
+        <p className="text-xs mb-4 text-muted">Mensualité de base : {money(monthlyFee)}</p>
         
         <div className="space-y-4">
           <Field icon={CircleDollarSign} label="Montant reçu (FCFA)" type="number" value={amount} onChange={(e: any) => setAmount(e.target.value)} />
           
           {simulation && simulation.allocations.length > 0 && (
             <div className="rounded-md p-3 text-sm" style={{ background: "#0d3320", border: `1px solid ${T.green}33` }}>
-              <p className="font-medium mb-2" style={{ color: T.green }}>Ce paiement couvrira :</p>
+              <p className="font-medium mb-2 text-green">Ce paiement couvrira :</p>
               <ul className="space-y-1.5">
                 {simulation.allocations.map((a: any, i: number) => {
                   const due = simulation.newDues.find((d: any) => d.period === a.period);
@@ -83,11 +83,11 @@ export function PayModal({ student, monthlyFee, onClose }: { student: any; month
                   };
                   return (
                     <li key={i} className="flex justify-between items-center text-xs">
-                      <span style={{ color: T.green }}>{formatP(a.period)}</span>
+                      <span className="text-green">{formatP(a.period)}</span>
                       <div className="flex gap-2">
-                        <span style={{ color: T.green }}>{money(a.amount)}</span>
+                        <span className="text-green">{money(a.amount)}</span>
                         {isPartial ? (
-                          <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: T.gold, color: T.ink }}>Partiel</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-gold text-ink">Partiel</span>
                         ) : (
                           <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: T.green, color: T.ink }}>Soldé</span>
                         )}
@@ -105,7 +105,7 @@ export function PayModal({ student, monthlyFee, onClose }: { student: any; month
           )}
           
           <label className="block">
-            <span className="text-xs uppercase tracking-wide" style={{ color: T.muted }}>Moyen de paiement</span>
+            <span className="text-xs uppercase tracking-wide text-muted">Moyen de paiement</span>
             <select value={method} onChange={(e) => setMethod(e.target.value as any)} className="w-full mt-1.5 rounded-md px-3 py-2.5 border text-sm" style={{ borderColor: T.inkLine, background: "#0C1626", color: T.text }}>
               <option value="especes">Espèces</option>
               <option value="wave">Wave</option>
@@ -116,7 +116,7 @@ export function PayModal({ student, monthlyFee, onClose }: { student: any; month
           </label>
         </div>
 
-        <button onClick={onSubmit} className="w-full mt-6 rounded-md py-3 text-sm font-medium flex items-center justify-center gap-2" style={{ background: T.gold, color: T.ink }}>
+        <button onClick={onSubmit} className="w-full mt-6 rounded-md py-3 text-sm font-medium flex items-center justify-center gap-2 bg-gold text-ink">
           <Plus size={16} /> Valider le paiement
         </button>
       </div>

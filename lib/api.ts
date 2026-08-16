@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { queueOfflineAction, getOfflineQueue, clearOfflineAction, getSchoolCache, saveSchoolCache } from "./db";
+import { queueOfflineAction, getOfflineQueue, clearOfflineAction, getSchoolCache, saveSchoolCache, updateOfflineActionError } from "./db";
 
 // ============================================================
 // ÉCOLES & UTILISATEURS
@@ -175,10 +175,10 @@ export async function addStudent(params: {
   parentPhone: string;
 }) {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    await queueOfflineAction('addStudent', params);
+    await queueOfflineAction(params.schoolId, 'addStudent', params);
     
     // Optimistic update in cache
-    const cache = await getSchoolCache();
+    const cache = await getSchoolCache(params.schoolId);
     const fakeId = `offline-student-${Date.now()}`;
     if (cache) {
       const cls = cache.classes?.find((c: any) => c.id === params.classId);
@@ -198,7 +198,7 @@ export async function addStudent(params: {
       };
       
       cache.students = [student, ...(cache.students || [])];
-      await saveSchoolCache(cache);
+      await saveSchoolCache(params.schoolId, cache);
     }
     
     return { id: fakeId, full_name: params.fullName, parent_phone: params.parentPhone };
@@ -225,9 +225,9 @@ export async function addStudent(params: {
     .single();
   if (clsErr) throw clsErr;
 
-  // 3. Crée l'échéance du mois en cours (premier jour du mois courant)
-  const now = new Date();
-  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  // 3. Crée l'échéance du mois (Octobre si on est en Aout/Septembre)
+  const { getCurrentAcademicPeriod } = await import("../components/utils/helpers");
+  const period = getCurrentAcademicPeriod();
 
   const { error: dueError } = await supabase
     .from("student_dues")
@@ -243,6 +243,20 @@ export async function addStudent(params: {
   return student;
 }
 
+export async function deleteStudent(studentId: string, schoolId: string) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error("Impossible de supprimer un élève en mode hors-ligne. Veuillez vous reconnecter.");
+  }
+  
+  const { error } = await supabase
+    .from("students")
+    .delete()
+    .eq("id", studentId)
+    .eq("school_id", schoolId);
+    
+  if (error) throw error;
+}
+
 // ============================================================
 // PAIEMENTS ÉLÈVES (mensualité)
 // Le trigger SQL `after_student_payment_insert` fait l'allocation
@@ -256,10 +270,10 @@ export async function recordStudentPayment(params: {
   receivedBy?: string;
 }) {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    await queueOfflineAction('recordStudentPayment', params);
+    await queueOfflineAction(params.schoolId, 'recordStudentPayment', params);
     
     // Optimistic update in cache
-    const cache = await getSchoolCache();
+    const cache = await getSchoolCache(params.schoolId);
     const fakeId = `offline-${Date.now()}`;
     if (cache) {
       const student = cache.students.find((s: any) => s.id === params.studentId);
@@ -312,7 +326,7 @@ export async function recordStudentPayment(params: {
           }
         }
       }
-      await saveSchoolCache(cache);
+      await saveSchoolCache(params.schoolId, cache);
     }
 
     return {
@@ -363,10 +377,10 @@ export async function recordInscriptionPayment(params: {
   receivedBy?: string;
 }) {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    await queueOfflineAction('recordInscriptionPayment', params);
+    await queueOfflineAction(params.schoolId, 'recordInscriptionPayment', params);
     
     // Optimistic update in cache
-    const cache = await getSchoolCache();
+    const cache = await getSchoolCache(params.schoolId);
     const fakeId = `offline-${Date.now()}`;
     if (cache) {
       const student = cache.students.find((s: any) => s.id === params.studentId);
@@ -392,7 +406,7 @@ export async function recordInscriptionPayment(params: {
       if (student) {
         student.inscriptionPaid = (student.inscriptionPaid || 0) + params.amount;
       }
-      await saveSchoolCache(cache);
+      await saveSchoolCache(params.schoolId, cache);
     }
 
     return {
@@ -597,60 +611,87 @@ export async function addExpense(params: { schoolId: string; label: string; amou
 // Combine les trois flux directement en JS (plus simple à maintenir
 // que la vue SQL tant que le volume reste raisonnable).
 // ============================================================
-export async function getCashJournal(schoolId: string) {
-  const [{ data: payments }, { data: staffPayments }, { data: expenses }] = await Promise.all([
-    supabase.from("student_payments").select("*, students(full_name)").eq("school_id", schoolId),
-    supabase.from("staff_payments").select("*, staff(full_name)").eq("school_id", schoolId),
-    supabase.from("expenses").select("*").eq("school_id", schoolId),
-  ]);
+export async function getCashJournal(schoolId: string, options?: { limit?: number; offset?: number }) {
+  let query = supabase
+    .from("cash_journal")
+    .select("*", { count: "exact" })
+    .eq("school_id", schoolId)
+    .order("date", { ascending: false });
 
-  const movements = [
-    ...(payments ?? []).map((p: any) => ({
-      id: p.id,
-      date: p.paid_at,
-      label: `${p.students?.full_name ?? "Élève"} — paiement`,
-      amount: p.amount,
-      type: "entree" as const,
-    })),
-    ...(staffPayments ?? []).map((p: any) => ({
-      id: p.id,
-      date: p.paid_at,
-      label: `Salaire — ${p.staff?.full_name ?? "Personnel"}`,
-      amount: p.amount,
-      type: "sortie" as const,
-    })),
-    ...(expenses ?? []).map((e: any) => ({
-      id: e.id,
-      date: e.spent_at,
-      label: e.label,
-      amount: e.amount,
-      type: "sortie" as const,
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  if (options?.limit != null && options?.offset != null) {
+    query = query.range(options.offset, options.offset + options.limit - 1);
+  } else {
+    // Default limit if not paginated to prevent OOM
+    query = query.limit(500);
+  }
 
-  return movements;
+  const { data, error, count } = await query;
+  if (error) throw error;
+  
+  return { movements: data, count };
 }
 
-export async function processOfflineQueue() {
+let isProcessingQueue = false;
+
+export async function processOfflineQueue(schoolId: string) {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-  const queue = await getOfflineQueue();
+  if (isProcessingQueue) return;
+  
+  const queue = await getOfflineQueue(schoolId);
   if (!queue || queue.length === 0) return;
 
+  isProcessingQueue = true;
   console.log(`Processing ${queue.length} offline actions...`);
-  for (const item of queue) {
-    try {
-      if (item.action === 'recordStudentPayment') {
-        await recordStudentPayment(item.payload);
-      } else if (item.action === 'recordInscriptionPayment') {
-        await recordInscriptionPayment(item.payload);
-      } else if (item.action === 'addStudent') {
-        await addStudent(item.payload);
+  
+  try {
+    for (const item of queue) {
+      if ((item.retryCount || 0) >= 5) {
+        console.warn(`Action ${item.action} failed too many times, skipping.`);
+        continue;
       }
-      if (item.id) {
-        await clearOfflineAction(item.id);
+      
+      try {
+        if (item.action === 'recordStudentPayment') {
+          await recordStudentPayment(item.payload);
+        } else if (item.action === 'recordInscriptionPayment') {
+          await recordInscriptionPayment(item.payload);
+        } else if (item.action === 'addStudent') {
+          await addStudent(item.payload);
+        }
+        
+        if (item.id) {
+          await clearOfflineAction(item.id);
+        }
+      } catch (err: any) {
+        console.error(`Failed to process offline action ${item.action}`, err);
+        if (item.id) {
+          await updateOfflineActionError(item.id, err?.message || "Erreur inconnue", (item.retryCount || 0) + 1);
+        }
       }
-    } catch (err) {
-      console.error(`Failed to process offline action ${item.action}`, err);
     }
+  } finally {
+    isProcessingQueue = false;
   }
+}
+
+// ============================================================
+// SUPER ADMIN
+// ============================================================
+export async function getAllSchoolsWithDirectors() {
+  const { data, error } = await supabase
+    .from("schools")
+    .select("*, school_users(full_name, phone)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function toggleSchoolSuspension(schoolId: string, currentStatus: string) {
+  const newStatus = currentStatus === "actif" ? "suspendu" : "actif";
+  const { error } = await supabase
+    .from("schools")
+    .update({ status: newStatus })
+    .eq("id", schoolId);
+  if (error) throw error;
+  return newStatus;
 }

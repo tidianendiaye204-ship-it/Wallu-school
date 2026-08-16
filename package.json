@@ -6,11 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "echo \"Skipping lint for now\"",
+    "lint": "eslint .",
     "test": "jest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "@supabase/supabase-js": "^2.45.0",
     "@types/papaparse": "^5.5.2",
     "@types/qrcode": "^1.5.6",
@@ -22,9 +23,11 @@
     "qrcode": "^1.5.4",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
+    "react-is": "^19.2.8",
     "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.4",
@@ -40,6 +43,7 @@
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "ts-jest": "^29.4.12",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.67.0"
   }
 }

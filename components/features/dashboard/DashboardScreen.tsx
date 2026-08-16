@@ -1,22 +1,22 @@
 import React, { useMemo } from "react";
-import { Users, TrendingUp, TrendingDown, CircleDollarSign, ArrowUpRight, ArrowDownRight, CheckCircle, GraduationCap } from "lucide-react";
+import { Users, TrendingUp, TrendingDown, CircleDollarSign, ArrowUpRight, ArrowDownRight, CheckCircle, GraduationCap, BellRing, Plus, Send, Wallet, AlertTriangle, UserPlus, PhoneForwarded, ChevronRight } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
-  LineChart, Line,
-  RadialBarChart, RadialBar, PolarAngleAxis
+  LineChart, Line
 } from "recharts";
 import { T } from "../../utils/theme";
-import { money, currentPeriod } from "../../utils/helpers";
+import { money, currentPeriod, getCurrentAcademicPeriod } from "../../utils/helpers";
 import { useSchoolData } from "../../contexts/SchoolDataContext";
 import { getLast6Months, groupByMonth, calculateTrend } from "../../utils/analytics";
+import { AIBriefWidget } from "./AIBriefWidget";
+import { ChatModal } from "../ai/ChatModal";
 
-// Custom Tooltip component for Recharts to match Wallu School styling
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="p-3 rounded-md border shadow-lg" style={{ background: T.inkSoft, borderColor: T.inkLine }}>
-        <p className="text-sm font-medium mb-2" style={{ color: T.text }}>{label}</p>
+        <p className="text-sm font-medium mb-2 text-text">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} className="text-xs" style={{ color: entry.color, fontFamily: "'IBM Plex Mono', monospace" }}>
             {entry.name}: {money(entry.value)}
@@ -28,71 +28,40 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function DashboardScreen() {
-  const { students, expenses, studentPayments, inscriptionPayments, classes, classMap, staff, staffPayments } = useSchoolData();
-  const period = currentPeriod(); // e.g. "2026-08"
-
-  // 1. KPI: Total Students & Trend
-  const totalStudents = students.length;
+export function DashboardScreen({ navigate }: { navigate: (tab: string) => void }) {
+  const { students, expenses, studentPayments, inscriptionPayments, classes, classMap, staff, staffPayments, unpaidStudentsCount, pendingSalariesCount } = useSchoolData();
+  const period = currentPeriod();
   
-  // Calculate students added this month vs last month based on creation date or first payment
-  // Assuming we don't have created_at on students yet, we use inscription payments to estimate new students
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonthKey = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}`;
 
-  const currentMonthInscriptions = inscriptionPayments.filter(p => p.paid_at?.startsWith(currentMonthKey)).length;
-  const lastMonthInscriptions = inscriptionPayments.filter(p => p.paid_at?.startsWith(lastMonthKey)).length;
-
-  // If last month had 0 inscriptions and it's a new school, trend is null
-  const studentsTrend = calculateTrend(currentMonthInscriptions, lastMonthInscriptions);
-
-  // 2. KPI: Monthly Payment Rate
-  const totalDuesThisMonth = students.reduce((acc, s) => {
-    const due = s.dues?.find((d: any) => d.period === period);
-    return acc + (due ? due.amountDue : 0);
-  }, 0);
-  
-  const totalPaidThisMonth = students.reduce((acc, s) => {
-    const due = s.dues?.find((d: any) => d.period === period);
-    return acc + (due ? due.amountAllocated : 0);
-  }, 0);
-
-  const paymentRate = totalDuesThisMonth > 0 ? (totalPaidThisMonth / totalDuesThisMonth) * 100 : 0;
-  const radialData = [{ name: "Rate", value: paymentRate, fill: T.gold }];
-
-  // 3. KPI: Monthly Receipts (Mensualités + Inscriptions)
+  // 1. Data Aggregation
   const groupedStudentPayments = groupByMonth(studentPayments, "paid_at", "amount");
   const groupedInscriptionPayments = groupByMonth(inscriptionPayments, "paid_at", "amount");
-  
   const currentReceipts = (groupedStudentPayments[currentMonthKey] || 0) + (groupedInscriptionPayments[currentMonthKey] || 0);
-  const lastMonthReceipts = (groupedStudentPayments[lastMonthKey] || 0) + (groupedInscriptionPayments[lastMonthKey] || 0);
-  const receiptsTrend = calculateTrend(currentReceipts, lastMonthReceipts);
 
-  // 4. KPI: Monthly Expenses
-  const groupedExpenses = groupByMonth(expenses, "date", "amount"); // date field is 'date' in context
-  const currentExpenses = groupedExpenses[currentMonthKey] || 0;
-
-  // --- Graphiques ---
-
-  // B. Recettes sur 6 mois
-  const last6Months = getLast6Months(); // [{ key: "2026-03", label: "Mars" }, ...]
+  const last6Months = getLast6Months();
   const areaChartData = last6Months.map(m => ({
     label: m.label,
     Mensualités: groupedStudentPayments[m.key] || 0,
     Inscriptions: groupedInscriptionPayments[m.key] || 0
   }));
 
-  // C. Paiements par Classe
-  // Aggregate current month's payments per class
+  const unpaidTrendData = last6Months.map(m => {
+    const expected = students.reduce((acc, s) => {
+      const due = s.dues?.find((d: any) => d.period.startsWith(m.key));
+      return acc + (due ? due.amountDue : 0);
+    }, 0);
+    const paid = groupedStudentPayments[m.key] || 0;
+    const unpaid = Math.max(0, expected - paid);
+    return { label: m.label, Impayés: unpaid };
+  });
+
   const classPayments = useMemo(() => {
     const map = new Map<string, number>();
-    // Reset map
     classes.forEach(c => map.set(c.id, 0));
-    
-    // Add student payments for current month
     studentPayments.forEach(p => {
       if (p.paid_at?.startsWith(currentMonthKey)) {
         const student = students.find(s => s.id === p.student_id);
@@ -101,228 +70,193 @@ export function DashboardScreen() {
         }
       }
     });
-
     return classes.map(c => ({
       name: c.name,
       Montant: map.get(c.id) || 0,
-      fillRate: (map.get(c.id) || 0) / (c.monthlyFee * students.filter(s => s.classId === c.id).length || 1) // rough fill rate
+      fillRate: (map.get(c.id) || 0) / (c.monthlyFee * students.filter(s => s.classId === c.id).length || 1)
     })).sort((a, b) => b.Montant - a.Montant);
   }, [classes, studentPayments, currentMonthKey, students]);
 
-  // D. Tendance Impayés sur 6 mois
-  // On estime l'impayé d'un mois = Montant Attendu - Montant Payé ce mois là
-  const unpaidTrendData = last6Months.map(m => {
-    // Calculer le total attendu pour ce mois (approximatif basé sur les élèves actuels)
-    const expected = students.reduce((acc, s) => {
-      const due = s.dues?.find((d: any) => d.period === m.key);
-      return acc + (due ? due.amountDue : 0);
-    }, 0);
-    
-    // Montant payé
-    const paid = groupedStudentPayments[m.key] || 0;
-    const unpaid = Math.max(0, expected - paid);
-    
-    return {
-      label: m.label,
-      Impayés: unpaid
-    };
-  });
-
-  // Déterminer si la tendance est à la hausse
+  // Alert calculations
   const lastUnpaid = unpaidTrendData[5]?.Impayés || 0;
   const previousUnpaid = unpaidTrendData[4]?.Impayés || 0;
   const unpaidIsRising = lastUnpaid > previousUnpaid && lastUnpaid > 0;
+  const unpaidRisePercent = calculateTrend(lastUnpaid, previousUnpaid) || 0;
+
+  // Briefing Logic
+  const todayFr = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+  let briefingMessage = `Tout semble en ordre pour aujourd'hui.`;
+  if (unpaidStudentsCount > 0 && pendingSalariesCount > 0) {
+    briefingMessage = `Aujourd'hui, ${unpaidStudentsCount} échéances en retard requièrent votre attention, et ${pendingSalariesCount} salaires sont en attente.`;
+  } else if (unpaidStudentsCount > 0) {
+    briefingMessage = `Aujourd'hui, ${unpaidStudentsCount} échéances en retard requièrent votre attention.`;
+  } else if (pendingSalariesCount > 0) {
+    briefingMessage = `Aujourd'hui, ${pendingSalariesCount} salaires sont en attente de paiement.`;
+  }
+
+  // Actionable Lists
+  const unpaidStudents = students.filter(s => {
+    const cls = classMap.get(s.classId);
+    if (!cls) return false;
+    const due = s.dues?.find((d: any) => d.period === period);
+    const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
+    return remaining > 0;
+  }).map(s => {
+    const cls = classMap.get(s.classId)!;
+    const due = s.dues?.find((d: any) => d.period === period);
+    const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
+    
+    // Deadline is the 5th of the FOLLOWING month
+    const targetPeriod = due ? due.period : period;
+    const [y, m] = targetPeriod.split("-").map(Number);
+    // JS Date month is 0-indexed. So new Date(y, m, 5) gives the 5th of the NEXT month automatically!
+    // Example: "2026-10" -> y=2026, m=10 -> new Date(2026, 10, 5) -> November 5, 2026.
+    const dueDate = new Date(y, m, 5);
+    
+    const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return { ...s, remaining, className: cls.name, diffDays };
+  }).sort((a, b) => a.diffDays - b.diffDays).slice(0, 5); // Take top 5 urgents
+
+  const unpaidStaff = staff.filter(m => {
+    const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period && p.period.startsWith(period.substring(0, 7))).reduce((a: any, p: any) => a + p.amount, 0);
+    return (m.salary - paidThisMonth) > 0;
+  }).map(m => {
+    const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period && p.period.startsWith(period.substring(0, 7))).reduce((a: any, p: any) => a + p.amount, 0);
+    return { ...m, remaining: m.salary - paidThisMonth };
+  });
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <h1 className="text-2xl mb-6" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Tableau de bord</h1>
+    <div className="animate-in fade-in duration-500 max-w-5xl mx-auto pb-12">
       
-      {/* A. KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        
-        {/* Total Élèves */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: T.muted }}>Total Élèves</p>
-            <Users size={16} style={{ color: T.gold }} />
+      <AIBriefWidget />
+      <ChatModal />
+
+      {/* 2. Actions Rapides (Scroll horizontal mobile) */}
+      <div className="mb-10">
+        <h2 className="text-sm font-medium uppercase tracking-wider mb-4 text-muted">Actions Rapides</h2>
+        <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+          <button onClick={() => navigate("classes")} className="flex flex-col items-center justify-center p-4 rounded-xl border bg-[#111111] hover:bg-[#1A1A1A] transition-colors shrink-0 w-32 border-inkLine">
+            <Wallet size={24} className="text-green mb-2" />
+            <span className="text-xs font-medium text-center text-text">Encaisser<br/>Paiement</span>
+          </button>
+          <button onClick={() => navigate("impayes")} className="flex flex-col items-center justify-center p-4 rounded-xl border bg-[#111111] hover:bg-[#1A1A1A] transition-colors shrink-0 w-32 border-inkLine">
+            <PhoneForwarded size={24} className="text-gold mb-2" />
+            <span className="text-xs font-medium text-center text-text">Relancer<br/>Impayés</span>
+          </button>
+          <button onClick={() => navigate("classes")} className="flex flex-col items-center justify-center p-4 rounded-xl border bg-[#111111] hover:bg-[#1A1A1A] transition-colors shrink-0 w-32 border-inkLine">
+            <UserPlus size={24} className="text-text mb-2" />
+            <span className="text-xs font-medium text-center text-text">Nouvel<br/>Élève</span>
+          </button>
+          <button onClick={() => navigate("staff")} className="flex flex-col items-center justify-center p-4 rounded-xl border bg-[#111111] hover:bg-[#1A1A1A] transition-colors shrink-0 w-32 border-inkLine">
+            <Send size={24} className="text-muted mb-2" />
+            <span className="text-xs font-medium text-center text-text">Régler<br/>Salaires</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Smart Alerts (Seulement si nécessaire) */}
+      {unpaidIsRising && (
+        <div className="mb-10 p-4 rounded-xl border flex gap-4 items-start bg-[#2B1B1B]" style={{ borderColor: T.rust }}>
+          <AlertTriangle size={24} className="text-rust shrink-0 mt-1" />
+          <div className="flex-1">
+            <h3 className="text-sm font-bold mb-1 text-text">Alerte Recouvrement</h3>
+            <p className="text-sm opacity-90 mb-3 text-muted">
+              Les impayés sont en hausse de {unpaidRisePercent.toFixed(1)}% par rapport au mois précédent. Un effort de relance WhatsApp est conseillé cette semaine.
+            </p>
+            <button onClick={() => navigate("impayes")} className="text-xs font-medium px-4 py-2 rounded-md" style={{ background: T.rust, color: T.text }}>
+              Voir les impayés
+            </button>
           </div>
-          <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.text }}>{totalStudents}</p>
-            {studentsTrend !== null ? (
-              <div className="flex items-center text-xs mb-1" style={{ color: studentsTrend >= 0 ? T.green : T.rust }}>
-                {studentsTrend >= 0 ? <TrendingUp size={14} className="mr-1"/> : <TrendingDown size={14} className="mr-1"/>}
-                {Math.abs(studentsTrend).toFixed(1)}%
+        </div>
+      )}
+
+      {/* 4. Priorités d'Action (Cartes Actionnables) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+        
+        {/* Impayés Urgents */}
+        <div className="rounded-xl border bg-[#111111] flex flex-col border-inkLine">
+          <div className="p-5 border-b flex justify-between items-center border-inkLine">
+            <h2 className="text-sm font-medium text-text">Impayés Prioritaires ({unpaidStudentsCount})</h2>
+            <button onClick={() => navigate("impayes")} className="text-xs font-medium hover:underline flex items-center text-gold">
+              Voir tout <ChevronRight size={14} className="ml-1" />
+            </button>
+          </div>
+          <div className="p-2 space-y-2">
+            {unpaidStudents.length === 0 ? (
+              <div className="p-8 text-center">
+                <CheckCircle size={32} style={{ color: T.green, margin: "0 auto 12px" }} />
+                <p className="text-sm text-muted">Aucun retard critique.</p>
               </div>
             ) : (
-              <span className="text-xs mb-1" style={{ color: T.muted }}>—</span>
+              unpaidStudents.map(s => (
+                <div key={s.id} className="p-3 rounded-lg flex items-center justify-between hover:bg-[#1A1A1A] transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-text">{s.name}</p>
+                    <p className="text-xs flex gap-2 mt-1 text-muted">
+                      <span>{s.className}</span>
+                      <span style={{ color: s.diffDays < 0 ? T.rust : T.gold }}>
+                        {s.diffDays < 0 ? `Retard ${Math.abs(s.diffDays)}j` : `Dans ${s.diffDays}j`}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-rust">{money(s.remaining)}</span>
+                    <button onClick={() => navigate("classes")} className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-white/10 border-inkLine">
+                      <Plus size={14} className="text-text" />
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
 
-        {/* Taux de paiement mensuel */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm relative overflow-hidden" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <div className="flex items-center justify-between relative z-10 h-full">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: T.muted }}>Taux Recouvrement</p>
-              <p className="text-3xl font-bold" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.text }}>
-                {paymentRate.toFixed(1)}%
-              </p>
-            </div>
-            <div className="w-16 h-16 shrink-0 ml-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadialBarChart cx="50%" cy="50%" innerRadius="70%" outerRadius="100%" barSize={6} data={radialData} startAngle={90} endAngle={-270}>
-                  <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-                  <RadialBar background={{ fill: T.inkLine }} dataKey="value" cornerRadius={10} />
-                </RadialBarChart>
-              </ResponsiveContainer>
-            </div>
+        {/* Salaires dus */}
+        <div className="rounded-xl border bg-[#111111] flex flex-col border-inkLine">
+          <div className="p-5 border-b flex justify-between items-center border-inkLine">
+            <h2 className="text-sm font-medium text-text">Salaires en Attente ({pendingSalariesCount})</h2>
+            <button onClick={() => navigate("staff")} className="text-xs font-medium hover:underline flex items-center text-gold">
+              Voir tout <ChevronRight size={14} className="ml-1" />
+            </button>
           </div>
-        </div>
-
-        {/* Recettes du mois */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: T.muted }}>Recettes (Mois)</p>
-            <CircleDollarSign size={16} style={{ color: T.green }} />
-          </div>
-          <div className="flex items-end gap-3">
-            <p className="text-2xl font-bold" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.text }}>{money(currentReceipts)}</p>
-          </div>
-          <div className="mt-2 text-xs flex items-center">
-            {receiptsTrend !== null ? (
-              <span className="flex items-center" style={{ color: receiptsTrend >= 0 ? T.green : T.rust }}>
-                {receiptsTrend >= 0 ? <ArrowUpRight size={14} className="mr-1"/> : <ArrowDownRight size={14} className="mr-1"/>}
-                {Math.abs(receiptsTrend).toFixed(1)}% vs mois préc.
-              </span>
+          <div className="p-2 space-y-2">
+            {unpaidStaff.length === 0 ? (
+              <div className="p-8 text-center">
+                <CheckCircle size={32} style={{ color: T.green, margin: "0 auto 12px" }} />
+                <p className="text-sm text-muted">Tous les salaires sont réglés.</p>
+              </div>
             ) : (
-              <span style={{ color: T.muted }}>— vs mois préc.</span>
+              unpaidStaff.map(m => (
+                <div key={m.id} className="p-3 rounded-lg flex items-center justify-between hover:bg-[#1A1A1A] transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-text">{m.name}</p>
+                    <p className="text-xs capitalize mt-1 text-muted">{m.role}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-text">{money(m.remaining)}</span>
+                    <button onClick={() => navigate("staff")} className="text-xs font-medium px-3 py-1.5 rounded bg-white text-black hover:bg-gray-200 transition-colors">
+                      Régler
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
-          </div>
-        </div>
-
-        {/* Dépenses du mois */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: T.muted }}>Dépenses (Mois)</p>
-            <TrendingDown size={16} style={{ color: T.rust }} />
-          </div>
-          <div className="flex items-end gap-3">
-            <p className="text-2xl font-bold" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.rust }}>{money(currentExpenses)}</p>
           </div>
         </div>
 
       </div>
 
-      {/* Échéances & Impayés */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      {/* 5. Données & Graphiques (Bottom) */}
+      <h2 className="text-sm font-medium uppercase tracking-wider mb-6 mt-12 text-muted">Vue Analytique</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Échéances à venir (jusqu'au 5 du mois) */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm flex flex-col h-72" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <div className="flex items-center justify-between mb-4 shrink-0">
-            <h2 className="text-sm font-medium" style={{ color: T.text }}>Échéances à venir</h2>
-            <div className="text-xs px-2 py-1 rounded-md" style={{ background: 'rgba(205,164,52,0.1)', color: T.gold }}>Avant le 5 du mois</div>
+        {/* Recettes Globales */}
+        <div className="rounded-xl p-5 border bg-[#111111] lg:col-span-2 border-inkLine">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-sm font-medium text-text">Évolution des Recettes</h2>
+            <span className="text-lg font-bold font-mono text-green">{money(currentReceipts)} <span className="text-xs font-sans text-gray-500 font-normal">ce mois</span></span>
           </div>
-          <div className="overflow-y-auto flex-1 hide-scrollbar -mx-2 px-2">
-            {students.filter(s => {
-              const cls = classMap.get(s.classId);
-              if (!cls) return false;
-              const due = s.dues?.find((d: any) => d.period === period);
-              const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
-              return remaining > 0;
-            }).length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-                <CheckCircle size={24} style={{ color: T.green, margin: "0 auto 8px" }} />
-                <p className="text-xs" style={{ color: T.muted }}>Aucune échéance en attente.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {students.filter(s => {
-                  const cls = classMap.get(s.classId);
-                  if (!cls) return false;
-                  const due = s.dues?.find((d: any) => d.period === period);
-                  const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
-                  return remaining > 0;
-                }).map(s => {
-                  const cls = classMap.get(s.classId);
-                  const due = s.dues?.find((d: any) => d.period === period);
-                  const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
-                  
-                  const today = new Date();
-                  const dueDate = new Date(today.getFullYear(), today.getMonth(), 5);
-                  const diffTime = dueDate.getTime() - today.getTime();
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  
-                  let statusColor = T.text;
-                  let statusText = "";
-                  if (diffDays > 0) { statusColor = T.gold; statusText = `Dans ${diffDays} j`; }
-                  else if (diffDays === 0) { statusColor = T.rust; statusText = "Aujourd'hui"; }
-                  else { statusColor = T.rust; statusText = `Retard (${Math.abs(diffDays)} j)`; }
-
-                  return (
-                    <div key={s.id} className="p-3 rounded-lg border flex items-center justify-between" style={{ borderColor: T.inkLine, background: 'rgba(255,255,255,0.02)' }}>
-                      <div>
-                        <p className="text-sm font-medium" style={{ color: T.text }}>{s.name}</p>
-                        <p className="text-xs" style={{ color: T.muted }}>{cls?.name} · Reste <span style={{ color: T.gold }}>{money(remaining)}</span></p>
-                      </div>
-                      <div className="text-xs font-semibold px-2 py-1 rounded border" style={{ color: statusColor, borderColor: statusColor, background: 'rgba(0,0,0,0.2)' }}>
-                        {statusText}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Salaires en attente */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm flex flex-col h-72" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <div className="flex items-center justify-between mb-4 shrink-0">
-            <h2 className="text-sm font-medium" style={{ color: T.text }}>Salaires en attente</h2>
-            <GraduationCap size={16} style={{ color: T.muted }} />
-          </div>
-          <div className="overflow-y-auto flex-1 hide-scrollbar -mx-2 px-2">
-            {staff.filter(m => {
-              const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period === period).reduce((a: any, p: any) => a + p.amount, 0);
-              return (m.salary - paidThisMonth) > 0;
-            }).length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-                <CheckCircle size={24} style={{ color: T.green, margin: "0 auto 8px" }} />
-                <p className="text-xs" style={{ color: T.muted }}>Tous les salaires sont réglés.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {staff.filter(m => {
-                  const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period === period).reduce((a: any, p: any) => a + p.amount, 0);
-                  return (m.salary - paidThisMonth) > 0;
-                }).map(m => {
-                  const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period === period).reduce((a: any, p: any) => a + p.amount, 0);
-                  const remaining = m.salary - paidThisMonth;
-                  return (
-                    <div key={m.id} className="p-3 rounded-lg border flex items-center justify-between" style={{ borderColor: T.inkLine, background: 'rgba(255,255,255,0.02)' }}>
-                      <div>
-                        <p className="text-sm font-medium" style={{ color: T.text }}>{m.name}</p>
-                        <p className="text-xs capitalize" style={{ color: T.muted }}>{m.role}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium" style={{ color: T.rust }}>{money(remaining)}</p>
-                        <p className="text-[10px]" style={{ color: T.muted }}>à régler</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Graphiques */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        
-        {/* B. Graphique des Recettes */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <h2 className="text-sm font-medium mb-6" style={{ color: T.text }}>Évolution des Recettes (6 mois)</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={areaChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -346,9 +280,9 @@ export function DashboardScreen() {
           </div>
         </div>
 
-        {/* C. Graphique Paiements par Classe */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <h2 className="text-sm font-medium mb-6" style={{ color: T.text }}>Encaissé par Classe (Ce mois)</h2>
+        {/* Paiements par Classe */}
+        <div className="rounded-xl p-5 border bg-[#111111] border-inkLine">
+          <h2 className="text-sm font-medium mb-6 text-text">Encaissé par Classe</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart layout="vertical" data={classPayments} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
@@ -361,28 +295,6 @@ export function DashboardScreen() {
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* D. Graphique Tendance Impayés */}
-        <div className="rounded-xl p-5 border backdrop-blur-sm lg:col-span-2" style={{ borderColor: `${T.inkLine}80`, background: `${T.inkSoft}CC` }}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-sm font-medium" style={{ color: T.text }}>Tendance des Impayés (6 mois)</h2>
-            {unpaidIsRising && (
-              <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ background: 'rgba(217, 83, 79, 0.15)', color: T.rust }}>
-                ⚠️ Hausse des impayés
-              </span>
-            )}
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={unpaidTrendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <XAxis dataKey="label" stroke={T.muted} fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke={T.muted} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="Impayés" stroke={unpaidIsRising ? T.rust : T.gold} strokeWidth={3} dot={{ r: 4, fill: unpaidIsRising ? T.rust : T.gold, strokeWidth: 0 }} activeDot={{ r: 6 }} />
-              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>

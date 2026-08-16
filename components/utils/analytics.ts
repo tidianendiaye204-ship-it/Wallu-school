@@ -25,6 +25,7 @@ export function groupByMonth(data: any[], dateField: string, amountField: string
 }
 
 export function calculateTrend(currentValue: number, previousValue: number) {
+  if (previousValue === 0 && currentValue === 0) return 0;
   if (previousValue === 0) return null; // "—" au lieu d'un pourcentage absurde ou div/0
   const diff = currentValue - previousValue;
   const percentage = (diff / previousValue) * 100;

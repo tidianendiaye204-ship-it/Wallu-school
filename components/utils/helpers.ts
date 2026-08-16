@@ -3,13 +3,23 @@ import QRCode from "qrcode";
 
 export function currentPeriod() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export function getCurrentAcademicPeriod() {
+  const d = new Date();
+  const month = d.getMonth();
+  const year = d.getFullYear();
+  if (month === 7 || month === 8) {
+    return `${year}-10-01`;
+  }
+  return `${year}-${String(month + 1).padStart(2, "0")}-01`;
 }
 
 export function nextPeriod(period: string) {
   const [y, m] = period.split("-").map(Number);
   const d = new Date(y, m, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 export function formatPeriod(period: string) {
@@ -22,12 +32,13 @@ export function formatPeriod(period: string) {
 export function generateAcademicMonths() {
   const current = new Date();
   let startYear = current.getFullYear();
-  if (current.getMonth() < 9) startYear--; // Si avant octobre, l'année a commencé l'année dernière
+  // Août (7) et Septembre (8) marquent le début de la NOUVELLE année scolaire
+  if (current.getMonth() < 7) startYear--;
   
   const months = [];
   let d = new Date(startYear, 9, 1); // Octobre
   for (let i = 0; i < 10; i++) { // Octobre à Juillet = 10 mois
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
     d.setMonth(d.getMonth() + 1);
   }
   return months;
@@ -277,7 +288,7 @@ export function allocatePayment(dues: any[], monthlyFee: number, amount: number)
     remaining -= alloc;
   }
 
-  let lastPeriod = sorted.length ? sorted[sorted.length - 1].period : currentPeriod();
+  let lastPeriod = sorted.length ? sorted[sorted.length - 1].period : getCurrentAcademicPeriod();
   while (remaining > 0 && monthlyFee > 0) {
     lastPeriod = nextPeriod(lastPeriod);
     let due = newDues.find((d) => d.period === lastPeriod);

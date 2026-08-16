@@ -34,13 +34,13 @@ export function ExpensesScreen() {
 
   return (
     <div>
-      <h1 className="text-2xl mb-6" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Dépenses</h1>
-      <div className="rounded-lg p-5 border mb-6" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+      <h1 className="text-2xl mb-6 font-serif text-text font-semibold">Dépenses</h1>
+      <div className="rounded-lg p-5 border mb-6 border-inkLine bg-inkSoft">
         <div className="grid sm:grid-cols-3 gap-3">
           <Field label="Libellé" value={label} onChange={(e: any) => setLabel(e.target.value)} placeholder="Ex : Fournitures, électricité..." />
           <Field icon={CircleDollarSign} label="Montant (FCFA)" type="number" value={amount} onChange={(e: any) => setAmount(e.target.value)} />
           <label className="block">
-            <span className="text-xs uppercase tracking-wide" style={{ color: T.muted }}>Catégorie</span>
+            <span className="text-xs uppercase tracking-wide text-muted">Catégorie</span>
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full mt-1.5 rounded-md px-3 py-2.5 border text-sm" style={{ borderColor: T.inkLine, background: "#0C1626", color: T.text }}>
               <option value="fournitures">Fournitures</option>
               <option value="electricite_eau">Électricité / Eau</option>
@@ -56,16 +56,16 @@ export function ExpensesScreen() {
         </button>
       </div>
 
-      <p className="text-xs mb-2" style={{ color: T.muted }}>Total dépenses : <span style={{ color: T.rust }}>{money(totalDepenses)}</span></p>
-      <div className="rounded-lg border overflow-hidden" style={{ borderColor: T.inkLine }}>
+      <p className="text-xs mb-2 text-muted">Total dépenses : <span className="text-rust">{money(totalDepenses)}</span></p>
+      <div className="rounded-lg border overflow-hidden border-inkLine">
         {expenses.length === 0 ? (
-          <p className="text-sm p-5" style={{ color: T.muted }}>Aucune dépense enregistrée.</p>
+          <p className="text-sm p-5 text-muted">Aucune dépense enregistrée.</p>
         ) : (
           [...expenses].reverse().map((e: any) => (
-            <div key={e.id} className="flex items-center justify-between px-5 py-3 border-b last:border-b-0" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+            <div key={e.id} className="flex items-center justify-between px-5 py-3 border-b last:border-b-0 border-inkLine bg-inkSoft">
               <div>
-                <p className="text-sm" style={{ color: T.text }}>{e.label}</p>
-                <p className="text-xs mt-0.5 capitalize" style={{ color: T.muted }}>{e.category.replace("_", " / ")} — {new Date(e.date).toLocaleDateString("fr-FR")}</p>
+                <p className="text-sm text-text">{e.label}</p>
+                <p className="text-xs mt-0.5 capitalize text-muted">{e.category.replace("_", " / ")} — {new Date(e.date).toLocaleDateString("fr-FR")}</p>
               </div>
               <p className="text-sm" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.rust }}>-{money(e.amount)}</p>
             </div>

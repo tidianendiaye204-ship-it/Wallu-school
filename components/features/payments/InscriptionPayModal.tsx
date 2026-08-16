@@ -39,14 +39,14 @@ export function InscriptionPayModal({ student, remaining, onClose }: { student: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="w-full max-w-sm rounded-lg p-6 border" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+      <div className="w-full max-w-sm rounded-lg p-6 border border-inkLine bg-inkSoft">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Inscription — {student.name}</h3>
-          <button onClick={onClose} style={{ color: T.muted }}><X size={18} /></button>
+          <h3 className="text-lg font-serif text-text font-semibold">Inscription — {student.name}</h3>
+          <button onClick={onClose} className="text-muted"><X size={18} /></button>
         </div>
-        <p className="text-xs mb-4" style={{ color: T.muted }}>Reste dû sur l'inscription : {money(remaining)}</p>
+        <p className="text-xs mb-4 text-muted">Reste dû sur l'inscription : {money(remaining)}</p>
         <Field icon={CircleDollarSign} label="Montant reçu (FCFA)" type="number" value={amount} onChange={(e: any) => setAmount(e.target.value)} />
-        <button onClick={onSubmit} className="w-full mt-6 rounded-md py-3 text-sm font-medium flex items-center justify-center gap-2" style={{ background: T.gold, color: T.ink }}>
+        <button onClick={onSubmit} className="w-full mt-6 rounded-md py-3 text-sm font-medium flex items-center justify-center gap-2 bg-gold text-ink">
           <Plus size={16} /> Valider et générer le reçu
         </button>
       </div>

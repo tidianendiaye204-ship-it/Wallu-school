@@ -12,9 +12,12 @@ interface WalluDB extends DBSchema {
     key: number;
     value: {
       id?: number;
+      schoolId: string;
       action: string;
       payload: any;
       created_at: number;
+      retryCount?: number;
+      lastError?: string;
     };
     indexes: { 'by-date': number };
   };
@@ -41,33 +44,47 @@ export function getDB() {
   return dbPromise;
 }
 
-export async function saveSchoolCache(data: any) {
+export async function saveSchoolCache(schoolId: string, data: any) {
   const db = await getDB();
   if (!db) return;
-  await db.put('school_cache', { timestamp: Date.now(), data }, 'school_data_cache');
+  await db.put('school_cache', { timestamp: Date.now(), data }, `school_data_cache_${schoolId}`);
 }
 
-export async function getSchoolCache() {
+export async function getSchoolCache(schoolId: string) {
   const db = await getDB();
   if (!db) return null;
-  const cache = await db.get('school_cache', 'school_data_cache');
+  const cache = await db.get('school_cache', `school_data_cache_${schoolId}`);
   return cache ? cache.data : null;
 }
 
-export async function queueOfflineAction(action: string, payload: any) {
+export async function queueOfflineAction(schoolId: string, action: string, payload: any) {
   const db = await getDB();
   if (!db) return;
   await db.add('sync_queue', {
+    schoolId,
     action,
     payload,
-    created_at: Date.now()
+    created_at: Date.now(),
+    retryCount: 0
   });
 }
 
-export async function getOfflineQueue() {
+export async function updateOfflineActionError(id: number, error: string, retryCount: number) {
+  const db = await getDB();
+  if (!db) return;
+  const item = await db.get('sync_queue', id);
+  if (item) {
+    item.lastError = error;
+    item.retryCount = retryCount;
+    await db.put('sync_queue', item);
+  }
+}
+
+export async function getOfflineQueue(schoolId: string) {
   const db = await getDB();
   if (!db) return [];
-  return await db.getAllFromIndex('sync_queue', 'by-date');
+  const all = await db.getAllFromIndex('sync_queue', 'by-date');
+  return all.filter(item => item.schoolId === schoolId);
 }
 
 export async function clearOfflineAction(id: number) {

@@ -51,18 +51,18 @@ export function RecouvrementScreen() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Impayés de scolarité</h1>
+        <h1 className="text-2xl font-serif text-text font-semibold">Impayés de scolarité</h1>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
-        <div className="rounded-lg p-5 border" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-          <div className="text-xs mb-1" style={{ color: T.muted }}>Total attendu en retard</div>
+        <div className="rounded-lg p-5 border border-inkLine bg-inkSoft">
+          <div className="text-xs mb-1 text-muted">Total attendu en retard</div>
           <div className="text-2xl font-bold" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.rust }}>
             {money(totalArrears)}
           </div>
         </div>
-        <div className="rounded-lg p-5 border" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-          <div className="text-xs mb-1" style={{ color: T.muted }}>Élèves concernés</div>
+        <div className="rounded-lg p-5 border border-inkLine bg-inkSoft">
+          <div className="text-xs mb-1 text-muted">Élèves concernés</div>
           <div className="text-2xl font-bold" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.text }}>
             {impayes.length}
           </div>
@@ -70,18 +70,18 @@ export function RecouvrementScreen() {
       </div>
 
       {impayes.length === 0 ? (
-        <div className="rounded-lg p-8 border text-center" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+        <div className="rounded-lg p-8 border text-center border-inkLine bg-inkSoft">
           <Check size={32} style={{ color: T.green, margin: "0 auto 12px" }} />
-          <p className="text-sm mb-1" style={{ color: T.text }}>Super ! Aucun retard de scolarité.</p>
+          <p className="text-sm mb-1 text-text">Super ! Aucun retard de scolarité.</p>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden" style={{ borderColor: T.inkLine }}>
+        <div className="rounded-lg border overflow-hidden border-inkLine">
           {impayes.map((item) => (
-            <div key={item.student.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 border-b last:border-b-0 gap-3" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+            <div key={item.student.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 border-b last:border-b-0 gap-3 border-inkLine bg-inkSoft">
               <div className="flex-1 min-w-0 mr-4">
-                <p className="text-sm font-medium truncate" style={{ color: T.text }}>{item.student.name}</p>
-                <p className="text-xs mt-0.5" style={{ color: T.muted }}>Classe : {item.className}</p>
-                <p className="text-xs mt-0.5 font-medium" style={{ color: T.rust }}>Reste à payer : {money(item.arrears)}</p>
+                <p className="text-sm font-medium truncate text-text">{item.student.name}</p>
+                <p className="text-xs mt-0.5 text-muted">Classe : {item.className}</p>
+                <p className="text-xs mt-0.5 font-medium text-rust">Reste à payer : {money(item.arrears)}</p>
               </div>
               
               {item.student.parentPhone && (

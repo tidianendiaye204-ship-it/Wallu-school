@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
-import { ChevronLeft, UserPlus, Receipt, CircleDollarSign, CheckCircle, DownloadCloud, Upload } from "lucide-react";
+import { ChevronLeft, UserPlus, Receipt, CircleDollarSign, CheckCircle, DownloadCloud, Upload, Trash2 } from "lucide-react";
 import { T } from "../../utils/theme";
-import { money, currentPeriod, exportCSV } from "../../utils/helpers";
+import { money, currentPeriod, exportCSV, getCurrentAcademicPeriod } from "../../utils/helpers";
 import { useSchoolData } from "../../contexts/SchoolDataContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { AddStudentModal } from "../students/AddStudentModal";
 import { PayModal } from "../payments/PayModal";
 import { InscriptionPayModal } from "../payments/InscriptionPayModal";
-import { recordStudentPayment, generateMissingReceipts, addClass, addStudent } from "../../../lib/api";
+import { recordStudentPayment, generateMissingReceipts, addClass, addStudent, deleteStudent } from "../../../lib/api";
 import { useNotifications } from "../../contexts/NotificationContext";
 
 export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettings?: () => void; onGoToReceipts?: () => void }) {
@@ -18,7 +18,7 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
   
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const period = currentPeriod();
+  const period = getCurrentAcademicPeriod();
 
   // Local Modal States
   const [addStudentModal, setAddStudentModal] = useState(false);
@@ -175,14 +175,29 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
     });
   };
 
+  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    if (!schoolId) return;
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer l'élève ${studentName} ? Cette action est irréversible et supprimera tout son historique de paiements.`)) {
+      try {
+        await deleteStudent(studentId, schoolId);
+        addToast('success', `${studentName} a été supprimé.`, 'Suppression réussie');
+        addNotification({ type: 'success', title: 'Élève supprimé', message: `${studentName} a été supprimé.`, category: 'system' });
+        refreshData();
+      } catch (err: any) {
+        console.error(err);
+        addToast('error', err?.message || 'Erreur lors de la suppression', 'Erreur');
+      }
+    }
+  };
+
   if (!selectedClass) {
     return (
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Classes</h1>
+          <h1 className="text-2xl font-serif text-text font-semibold">Classes</h1>
           <div className="flex gap-2">
             <label className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors border hover:bg-opacity-80 cursor-pointer" style={{ borderColor: T.inkLine, color: T.text, background: T.inkSoft }}>
-              <Upload size={16} style={{ color: T.gold }} />
+              <Upload size={16} className="text-gold" />
               <span className="hidden sm:inline">{isGenerating ? "Import..." : "Importer CSV"}</span>
               <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} disabled={isGenerating} />
             </label>
@@ -192,19 +207,18 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
                 className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors border hover:bg-opacity-80"
                 style={{ borderColor: T.inkLine, color: T.text, background: T.inkSoft }}
               >
-                <DownloadCloud size={16} style={{ color: T.gold }} />
+                <DownloadCloud size={16} className="text-gold" />
                 <span className="hidden sm:inline">Exporter CSV</span>
               </button>
             )}
           </div>
         </div>
         {classes.length === 0 ? (
-          <div className="rounded-lg p-5 border text-center" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
-            <p className="text-sm mb-4" style={{ color: T.muted }}>Vous n'avez pas encore créé de classe.</p>
+          <div className="rounded-lg p-5 border text-center border-inkLine bg-inkSoft">
+            <p className="text-sm mb-4 text-muted">Vous n'avez pas encore créé de classe.</p>
             <button 
               onClick={onGoToSettings} 
-              className="rounded-md px-4 py-2 text-sm font-medium mx-auto block hover:opacity-90 transition-opacity" 
-              style={{ background: T.gold, color: T.ink }}
+              className="rounded-md px-4 py-2 text-sm font-medium mx-auto block hover:opacity-90 transition-opacity bg-gold text-ink"
             >
               Aller dans les paramètres pour ajouter une classe
             </button>
@@ -213,16 +227,16 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
           <div className="grid sm:grid-cols-2 gap-4">
             {classes.map((c) => {
               const classStudents = students.filter((s) => s.classId === c.id);
-              const paid = classStudents.reduce((sum, s) => sum + (s.dues.find((d: any) => d.period === period)?.amountAllocated || 0), 0);
+              const paid = classStudents.reduce((sum, s) => sum + (s.dues.find((d: any) => period.startsWith(d.period))?.amountAllocated || 0), 0);
               const due = classStudents.length * c.monthlyFee;
               return (
-                <button key={c.id} onClick={() => setSelectedClass(c.id)} className="text-left rounded-lg p-5 border hover:border-opacity-60 transition-colors" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+                <button key={c.id} onClick={() => setSelectedClass(c.id)} className="text-left rounded-lg p-5 border hover:border-opacity-60 transition-colors border-inkLine bg-inkSoft">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-base font-medium" style={{ color: T.text }}>{c.name}</span>
-                    <span className="text-xs" style={{ color: T.muted }}>{classStudents.length} élèves</span>
+                    <span className="text-base font-medium text-text">{c.name}</span>
+                    <span className="text-xs text-muted">{classStudents.length} élèves</span>
                   </div>
-                  <div className="text-xs mb-1" style={{ color: T.muted }}>Encaissé ce mois</div>
-                  <div className="text-lg" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.gold }}>{money(paid)} <span className="text-xs" style={{ color: T.muted }}>/ {money(due)}</span></div>
+                  <div className="text-xs mb-1 text-muted">Encaissé ce mois</div>
+                  <div className="text-lg" style={{ fontFamily: "'IBM Plex Mono', monospace", color: T.gold }}>{money(paid)} <span className="text-xs text-muted">/ {money(due)}</span></div>
                 </button>
               );
             })}
@@ -234,11 +248,11 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
 
   return (
     <div>
-      <button onClick={() => setSelectedClass(null)} className="flex items-center gap-1 text-sm mb-4" style={{ color: T.muted }}>
+      <button onClick={() => setSelectedClass(null)} className="flex items-center gap-1 text-sm mb-4 text-muted">
         <ChevronLeft size={16} /> Retour aux classes
       </button>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl" style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>
+        <h1 className="text-2xl font-serif text-text font-semibold">
           {classMap.get(selectedClass)?.name}
         </h1>
         <div className="flex gap-2">
@@ -257,12 +271,12 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
       {successMessage && (
         <div className="rounded-lg p-4 mb-4 flex items-center justify-between" style={{ background: "#0d3320", border: `1px solid ${T.green}` }}>
           <div className="flex items-center gap-3">
-            <CheckCircle size={20} style={{ color: T.green }} />
+            <CheckCircle size={20} className="text-green" />
             <div>
-              <p className="text-sm font-medium" style={{ color: T.green }}>
+              <p className="text-sm font-medium text-green">
                 {successMessage.count} reçu{successMessage.count > 1 ? "s" : ""} généré{successMessage.count > 1 ? "s" : ""} avec succès !
               </p>
-              <p className="text-xs mt-0.5" style={{ color: T.muted }}>
+              <p className="text-xs mt-0.5 text-muted">
                 Allez dans l'onglet Reçus pour les imprimer ou les télécharger.
               </p>
             </div>
@@ -286,9 +300,9 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
         </div>
       )}
 
-      <p className="text-xs mb-3" style={{ color: T.muted }}>Cochez les élèves puis cliquez sur « Générer » pour créer leurs reçus du mois.</p>
+      <p className="text-xs mb-3 text-muted">Cochez les élèves puis cliquez sur « Générer » pour créer leurs reçus du mois.</p>
       
-      <div className="rounded-lg border overflow-hidden" style={{ borderColor: T.inkLine }}>
+      <div className="rounded-lg border overflow-hidden border-inkLine">
         {students.filter((s) => s.classId === selectedClass).map((s) => {
           const cls = classMap.get(s.classId);
           const totalArrears = s.dues.reduce((sum: number, d: any) => d.period <= period ? sum + (d.amountDue - d.amountAllocated) : sum, 0);
@@ -307,12 +321,12 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
           const inscriptionSolde = cls.inscriptionFee - (s.inscriptionPaid || 0);
           const hasReceipt = studentHasReceipt(s.name);
           return (
-            <div key={s.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0" style={{ borderColor: T.inkLine, background: T.inkSoft }}>
+            <div key={s.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0 border-inkLine bg-inkSoft">
               <div className="flex items-center gap-3">
                 <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} className="w-4 h-4 accent-current" style={{ accentColor: T.gold }} />
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm" style={{ color: T.text }}>{s.name}</p>
+                    <p className="text-sm text-text">{s.name}</p>
                     {hasReceipt && (
                       <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "#0d3320", color: T.green, border: `1px solid ${T.green}33` }}>
                         <CheckCircle size={10} /> Reçu ✓
@@ -334,8 +348,11 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
                     Inscription
                   </button>
                 )}
-                <button onClick={() => setPayModal(s)} className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium" style={{ background: T.gold, color: T.ink }}>
+                <button onClick={() => setPayModal(s)} className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium bg-gold text-ink">
                   <CircleDollarSign size={14} /> Mensualité
+                </button>
+                <button onClick={() => handleDeleteStudent(s.id, s.name)} className="flex items-center justify-center rounded-md px-2 py-2 transition-colors hover:bg-opacity-80" style={{ background: T.inkSoft, color: T.rust, border: `1px solid ${T.inkLine}` }} title="Supprimer cet élève">
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>

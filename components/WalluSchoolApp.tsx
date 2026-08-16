@@ -32,7 +32,7 @@ import { SettingsScreen } from "./features/settings/SettingsScreen";
 import { processOfflineQueue } from "../lib/api";
 
 function AppContent() {
-  const { session, loading: authLoading, schoolName } = useAuth();
+  const { session, loading: authLoading, schoolName, schoolId, schoolStatus } = useAuth();
   const { addToast } = useNotifications();
   const [authMode, setAuthMode] = useState("login");
   
@@ -53,15 +53,15 @@ function AppContent() {
 
   useEffect(() => {
     const handleOnline = async () => {
-      if (session) {
+      if (session && schoolId) {
         addToast('info', 'Retour de la connexion, synchronisation des données...', 'Mode en ligne');
-        await processOfflineQueue();
+        await processOfflineQueue(schoolId);
         refreshData();
       }
     };
     window.addEventListener("online", handleOnline);
     return () => window.removeEventListener("online", handleOnline);
-  }, [session, addToast, refreshData]);
+  }, [session, schoolId, addToast, refreshData]);
 
   const handleInstallApp = () => {
     if (installPromptEvent) {
@@ -76,8 +76,8 @@ function AppContent() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: T.ink }}>
-        <div className="animate-spin w-8 h-8 border-4 border-current border-t-transparent rounded-full" style={{ color: T.gold }} />
+      <div className="min-h-screen w-full flex items-center justify-center bg-ink">
+        <div className="animate-spin w-8 h-8 border-4 border-current border-t-transparent rounded-full text-gold" />
       </div>
     );
   }
@@ -89,8 +89,26 @@ function AppContent() {
     return <LoginScreen onGoRegister={() => setAuthMode("register")} />;
   }
 
+  if (schoolStatus === "suspendu") {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 text-center bg-ink">
+        <AlertCircle size={48} className="mb-4 text-red-500" />
+        <h1 className="text-2xl font-bold mb-2 text-white">Compte Suspendu</h1>
+        <p className="text-gray-400 mb-6 max-w-md">
+          L'accès à Wallu School pour cette école a été suspendu. Veuillez contacter l'administrateur pour régulariser votre situation.
+        </p>
+        <button 
+          onClick={handleLogout} 
+          className="px-6 py-2 rounded-md font-medium bg-gold text-ink"
+        >
+          Se déconnecter
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row" style={{ background: T.ink, fontFamily: "'Work Sans', sans-serif" }}>
+    <div className="min-h-screen w-full flex flex-col md:flex-row bg-ink font-sans">
       <style>{FONT_IMPORT}</style>
       
       {/* ── Modale d'erreur RLS ── */}
@@ -98,40 +116,39 @@ function AppContent() {
 
       {/* ── Barre de progression bulk generate ── */}
       {isGenerating && (
-        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center gap-3" style={{ background: T.inkSoft, borderBottom: `2px solid ${T.gold}` }}>
-          <span className="text-xs font-medium" style={{ color: T.gold }}>Génération en cours…</span>
-          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: T.inkLine }}>
-            <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.round(bulkProgress * 100)}%`, background: T.gold }} />
+        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center gap-3 bg-inkSoft border-b-2 border-gold">
+          <span className="text-xs font-medium text-gold">Génération en cours…</span>
+          <div className="flex-1 h-2 rounded-full overflow-hidden bg-inkLine">
+            <div className="h-full rounded-full transition-all duration-300 bg-gold" style={{ width: `${Math.round(bulkProgress * 100)}%` }} />
           </div>
-          <span className="text-xs" style={{ color: T.muted }}>{Math.round(bulkProgress * 100)}%</span>
+          <span className="text-xs text-muted">{Math.round(bulkProgress * 100)}%</span>
         </div>
       )}
 
-      {/* Header Mobile */}
-      <div className="md:hidden flex items-center justify-between px-6 py-4 border-b print:hidden" style={{ borderColor: T.inkLine }}>
+      <div className="md:hidden flex items-center justify-between px-6 py-4 border-b border-inkLine print:hidden">
         <div className="flex items-center gap-2">
-          <Receipt size={18} style={{ color: T.gold }} />
-          <span style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Wallu School</span>
+          <Receipt size={18} className="text-gold" />
+          <span className="font-serif text-text font-semibold">Wallu School</span>
         </div>
         <div className="flex items-center gap-3">
           <NotificationCenter />
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ color: T.text }}>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-text">
             {mobileMenuOpen ? <X size={24} /> : <div className="space-y-1"><div className="w-6 h-0.5 bg-current"></div><div className="w-6 h-0.5 bg-current"></div><div className="w-6 h-0.5 bg-current"></div></div>}
           </button>
         </div>
       </div>
 
       {/* Sidebar */}
-      <aside className={`w-56 shrink-0 border-r px-4 py-6 flex-col gap-1 print:hidden ${mobileMenuOpen ? "flex absolute inset-0 z-40 bg-inherit" : "hidden md:flex"}`} style={{ borderColor: T.inkLine }}>
+      <aside className={`w-56 shrink-0 border-r border-inkLine px-4 py-6 flex-col gap-1 print:hidden ${mobileMenuOpen ? "flex absolute inset-0 z-40 bg-inherit" : "hidden md:flex"}`}>
         <div className="flex items-center justify-between px-2 mb-6 md:mb-6">
           <div className="flex items-center gap-2">
-            <Receipt size={18} style={{ color: T.gold }} />
-            <span style={{ fontFamily: "'Fraunces', serif", color: T.text, fontWeight: 600 }}>Wallu School</span>
+            <Receipt size={18} className="text-gold" />
+            <span className="font-serif text-text font-semibold">Wallu School</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden md:block"><NotificationCenter /></div>
             {mobileMenuOpen && (
-              <button className="md:hidden" onClick={() => setMobileMenuOpen(false)} style={{ color: T.text }}><X size={20} /></button>
+              <button className="md:hidden text-text" onClick={() => setMobileMenuOpen(false)}><X size={20} /></button>
             )}
           </div>
         </div>
@@ -149,17 +166,16 @@ function AppContent() {
           {installPromptEvent && (
             <button
               onClick={handleInstallApp}
-              className="w-full mb-4 flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
-              style={{ background: T.gold, color: T.ink }}
+              className="w-full mb-4 flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium bg-gold text-ink"
             >
               <DownloadCloud size={16} /> Installer l'app
             </button>
           )}
-          <div className="text-[11px]" style={{ color: T.muted }}>{schoolName}</div>
+          <div className="text-[11px] text-muted">{schoolName}</div>
         </div>
 
         {/* Bouton de déconnexion */}
-        <div className="mt-2 pt-4 border-t" style={{ borderColor: T.inkLine }}>
+        <div className="mt-2 pt-4 border-t border-inkLine">
           <button 
             onClick={handleLogout} 
             className="w-full flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
@@ -171,7 +187,7 @@ function AppContent() {
 
       {/* Main */}
       <main className="flex-1 px-6 md:px-10 py-8 overflow-y-auto" style={{ display: mobileMenuOpen ? 'none' : 'block' }}>
-        {tab === "dashboard" && <DashboardScreen />}
+        {tab === "dashboard" && <DashboardScreen navigate={setTab} />}
         {tab === "classes" && <ClassesScreen onGoToSettings={() => setTab("settings")} onGoToReceipts={() => setTab("receipts")} />}
         {tab === "staff" && <StaffScreen />}
         {tab === "impayes" && <RecouvrementScreen />}
