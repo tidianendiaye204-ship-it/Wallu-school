@@ -29,7 +29,63 @@ import { ReceiptScreen } from "./features/receipts/ReceiptScreen";
 import { CaisseScreen } from "./features/reports/CaisseScreen";
 import { BilanScreen } from "./features/reports/BilanScreen";
 import { SettingsScreen } from "./features/settings/SettingsScreen";
-import { processOfflineQueue } from "../lib/api";
+import { processOfflineQueue, createSchool } from "../lib/api";
+
+function CreateSchoolFallback({ onLogout }: { onLogout: () => void }) {
+  const { session } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({ ecole: "", directeur: "", telephone: "", ville: "" });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session?.user) return;
+    setLoading(true);
+    setError("");
+    try {
+      await createSchool({
+        name: form.ecole,
+        directorName: form.directeur,
+        phone: form.telephone,
+        city: form.ville,
+        authUserId: session.user.id
+      });
+      // Force reload to get the new school
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Erreur lors de la création de l'école");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center p-6 bg-ink text-text">
+      <div className="w-full max-w-md bg-inkSoft p-8 rounded-xl border border-inkLine">
+        <h1 className="text-2xl font-bold mb-2 text-white">Finaliser la configuration</h1>
+        <p className="text-sm text-gray-400 mb-6">Votre compte existe, mais vous n'avez pas encore configuré votre école.</p>
+        
+        {error && <div className="p-3 mb-4 text-sm text-red-500 bg-red-500/10 rounded-md border border-red-500/20">{error}</div>}
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input className="w-full bg-[#0C1626] border border-inkLine rounded-md px-3 py-2 text-sm text-white" placeholder="Nom de l'école" required value={form.ecole} onChange={e => setForm({...form, ecole: e.target.value})} />
+          <input className="w-full bg-[#0C1626] border border-inkLine rounded-md px-3 py-2 text-sm text-white" placeholder="Nom du directeur" required value={form.directeur} onChange={e => setForm({...form, directeur: e.target.value})} />
+          <input className="w-full bg-[#0C1626] border border-inkLine rounded-md px-3 py-2 text-sm text-white" placeholder="Téléphone" required value={form.telephone} onChange={e => setForm({...form, telephone: e.target.value})} />
+          <input className="w-full bg-[#0C1626] border border-inkLine rounded-md px-3 py-2 text-sm text-white" placeholder="Ville" required value={form.ville} onChange={e => setForm({...form, ville: e.target.value})} />
+          
+          <button type="submit" disabled={loading} className="w-full py-2.5 bg-gold text-ink font-medium rounded-md">
+            {loading ? "Création en cours..." : "Créer mon école"}
+          </button>
+        </form>
+        
+        <button onClick={onLogout} className="w-full mt-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+          Se déconnecter
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function AppContent() {
   const { session, loading: authLoading, schoolName, schoolId, schoolStatus } = useAuth();
@@ -87,6 +143,10 @@ function AppContent() {
       return <InscriptionScreen onGoLogin={() => setAuthMode("login")} />;
     }
     return <LoginScreen onGoRegister={() => setAuthMode("register")} />;
+  }
+
+  if (session && !schoolId) {
+    return <CreateSchoolFallback onLogout={handleLogout} />;
   }
 
   if (schoolStatus === "suspendu") {
