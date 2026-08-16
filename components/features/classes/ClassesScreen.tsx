@@ -305,15 +305,21 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
       <div className="rounded-lg border overflow-hidden border-inkLine">
         {students.filter((s) => s.classId === selectedClass).map((s) => {
           const cls = classMap.get(s.classId);
+          const currentRealPeriod = currentPeriod();
           const totalArrears = s.dues.reduce((sum: number, d: any) => d.period <= period ? sum + (d.amountDue - d.amountAllocated) : sum, 0);
+          const strictArrears = s.dues.reduce((sum: number, d: any) => d.period < currentRealPeriod ? sum + (d.amountDue - d.amountAllocated) : sum, 0);
           const advanceMonths = s.dues.filter((d: any) => d.period > period && d.amountAllocated > 0).length;
           
           let paymentStatus = "Mensualité à jour";
           let paymentColor = T.green;
-          if (totalArrears > 0) {
-            const monthsCount = Math.ceil(totalArrears / (cls.monthlyFee || 1));
+          
+          if (strictArrears > 0) {
+            const monthsCount = Math.ceil(strictArrears / (cls.monthlyFee || 1));
             paymentStatus = `Retard : ${monthsCount} mois (${money(totalArrears)})`;
             paymentColor = T.rust;
+          } else if (totalArrears > 0) {
+            paymentStatus = `À payer : ${money(totalArrears)}`;
+            paymentColor = "#EAB308"; // Jaune/Orange pour "à payer" sans être en retard
           } else if (advanceMonths > 0) {
             paymentStatus = `Avance : ${advanceMonths} mois`;
           }
