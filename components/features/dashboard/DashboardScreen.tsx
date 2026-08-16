@@ -258,7 +258,7 @@ export function DashboardScreen({ navigate }: { navigate: (tab: string) => void 
             <span className="text-lg font-bold font-mono text-green">{money(currentReceipts)} <span className="text-xs font-sans text-gray-500 font-normal">ce mois</span></span>
           </div>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={250}>
               <AreaChart data={areaChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorMensualites" x1="0" y1="0" x2="0" y2="1">
@@ -284,7 +284,7 @@ export function DashboardScreen({ navigate }: { navigate: (tab: string) => void 
         <div className="rounded-xl p-5 border bg-[#111111] border-inkLine">
           <h2 className="text-sm font-medium mb-6 text-text">Encaissé par Classe</h2>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={250}>
               <BarChart layout="vertical" data={classPayments} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
                 <XAxis type="number" stroke={T.muted} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
                 <YAxis dataKey="name" type="category" stroke={T.muted} fontSize={12} tickLine={false} axisLine={false} width={80} />

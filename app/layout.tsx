@@ -15,6 +15,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Wallu School",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {

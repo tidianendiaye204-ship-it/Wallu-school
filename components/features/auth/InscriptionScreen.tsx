@@ -33,6 +33,13 @@ export function InscriptionScreen({ onGoLogin }: { onGoLogin: () => void }) {
       return;
     }
 
+    // Si la confirmation par email est activée sur Supabase, la session est null après le signUp.
+    if (!authData.session) {
+      setLoading(false);
+      setError("Inscription réussie. Veuillez vérifier votre email pour confirmer votre compte avant de continuer.");
+      return;
+    }
+
     // 2. Création de l'école et de l'utilisateur
     try {
       await createSchool({ 
