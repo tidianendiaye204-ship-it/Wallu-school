@@ -5,7 +5,7 @@ import { createSchool } from "../../../lib/api";
 import { T } from "../../utils/theme";
 import { Field } from "../../common/Field";
 
-export function InscriptionScreen({ onGoLogin }: { onGoLogin: () => void }) {
+export function InscriptionScreen({ onGoLogin, onSuccess }: { onGoLogin: () => void, onSuccess?: () => void }) {
   const [form, setForm] = useState({ email: "", password: "", ecole: "", directeur: "", telephone: "", ville: "", effectif: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,9 @@ export function InscriptionScreen({ onGoLogin }: { onGoLogin: () => void }) {
         authUserId: user.id
       });
       // La session est mise à jour automatiquement par onAuthStateChange
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err: any) {
       setLoading(false);
       console.error(err);

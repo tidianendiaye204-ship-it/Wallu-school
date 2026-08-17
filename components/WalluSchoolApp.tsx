@@ -138,10 +138,16 @@ function AppContent() {
     );
   }
 
+  if (authMode === "register") {
+    return (
+      <InscriptionScreen 
+        onGoLogin={() => setAuthMode("login")} 
+        onSuccess={() => window.location.reload()} 
+      />
+    );
+  }
+
   if (!session) {
-    if (authMode === "register") {
-      return <InscriptionScreen onGoLogin={() => setAuthMode("login")} />;
-    }
     return <LoginScreen onGoRegister={() => setAuthMode("register")} />;
   }
 
