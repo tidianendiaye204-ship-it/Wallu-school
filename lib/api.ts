@@ -90,13 +90,16 @@ export async function uploadSchoolStamp(schoolId: string, file: File): Promise<s
 }
 
 export async function getSchoolForUser(authUserId: string) {
-  const { data: user, error: userError } = await supabase
+  const { data: users, error: userError } = await supabase
     .from("school_users")
     .select("school_id")
     .eq("auth_user_id", authUserId)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
   
-  if (userError || !user) return null;
+  if (userError || !users || users.length === 0) return null;
+
+  const user = users[0];
 
   const { data: school, error: schoolError } = await supabase
     .from("schools")
