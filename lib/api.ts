@@ -177,6 +177,10 @@ export async function addStudent(params: {
   fullName: string;
   parentPhone: string;
 }) {
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  const matricule = `${yy}-${rand}`;
+
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     await queueOfflineAction(params.schoolId, 'addStudent', params);
     
@@ -185,10 +189,8 @@ export async function addStudent(params: {
     const fakeId = `offline-student-${Date.now()}`;
     if (cache) {
       const cls = cache.classes?.find((c: any) => c.id === params.classId);
-      const yy = String(new Date().getFullYear()).slice(-2);
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      const matricule = `${yy}-${rand}`;
       
+
       const student = {
         id: fakeId,
         school_id: params.schoolId,
@@ -212,10 +214,6 @@ export async function addStudent(params: {
     return { id: fakeId, full_name: params.fullName, parent_phone: params.parentPhone, matricule };
   }
 
-  const yy = String(new Date().getFullYear()).slice(-2);
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  const matricule = `${yy}-${rand}`;
-
   // 1. Insère l’élève
   const { data: student, error } = await supabase
     .from("students")
@@ -230,28 +228,10 @@ export async function addStudent(params: {
     .single();
   if (error) throw error;
 
-  // 2. Récupère la mensualité de la classe pour créer l'échéance initiale
-  const { data: cls, error: clsErr } = await supabase
-    .from("classes")
-    .select("monthly_fee")
-    .eq("id", params.classId)
-    .single();
-  if (clsErr) throw clsErr;
-
-  // 3. Crée l'échéance du mois (Octobre si on est en Aout/Septembre)
-  const { getCurrentAcademicPeriod } = await import("../components/utils/helpers");
-  const period = getCurrentAcademicPeriod();
-
-  const { error: dueError } = await supabase
-    .from("student_dues")
-    .insert({
-      student_id: student.id,
-      period,
-      amount_due: cls.monthly_fee,
-      amount_allocated: 0,
-    });
-  // On ignore le conflit unique (si la ligne existe déjà)
-  if (dueError && dueError.code !== "23505") throw dueError;
+  // L'échéance mensuelle (student_dues) n'est PAS créée à l'inscription.
+  // Elle sera créée automatiquement lors du premier paiement de mensualité
+  // via le trigger SQL allocate_student_payment, ou quand le mois arrive.
+  // Cela évite d'afficher "À payer" en Août pour une échéance d'Octobre.
 
   return student;
 }
