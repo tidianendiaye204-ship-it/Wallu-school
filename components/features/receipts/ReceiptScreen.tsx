@@ -12,6 +12,10 @@ export function ReceiptScreen() {
   const [receiptSearch, setReceiptSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState("today");
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
 
   const whatsappLink = (r: any) => {
     if (!r.phone) return "#";
@@ -33,7 +37,7 @@ export function ReceiptScreen() {
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <select 
             value={timeFilter} 
-            onChange={e => setTimeFilter(e.target.value)} 
+            onChange={e => { setTimeFilter(e.target.value); setCurrentPage(1); }}
             className="px-3 py-2 rounded-md text-sm border focus:outline-none" 
             style={{ background: "#0C1626", borderColor: T.inkLine, color: T.text }}
           >
@@ -46,7 +50,7 @@ export function ReceiptScreen() {
               type="text"
               placeholder="Rechercher élève ou reçu..."
               value={receiptSearch}
-              onChange={e => setReceiptSearch(e.target.value)}
+              onChange={e => { setReceiptSearch(e.target.value); setCurrentPage(1); }}
               className="w-full pl-9 pr-4 py-2 rounded-md text-sm border focus:outline-none"
               style={{ background: "#0C1626", borderColor: T.inkLine, color: T.text }}
             />
@@ -62,35 +66,67 @@ export function ReceiptScreen() {
           <p className="text-sm text-muted">Aucun reçu n'a été généré pour le moment.</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-4 print:hidden">
-          {receipts
-            .filter((r: any) => {
-              if (timeFilter === "today" && (!r.date || !r.date.startsWith(todayStr))) return false;
-              const term = receiptSearch.toLowerCase();
+        <div className="print:hidden">
+          <div className="grid sm:grid-cols-2 gap-4">
+            {(() => {
+              const filteredReceipts = receipts.filter((r: any) => {
+                if (timeFilter === "today" && (!r.date || !r.date.startsWith(todayStr))) return false;
+                const term = receiptSearch.toLowerCase();
+                return (
+                  r.student?.toLowerCase().includes(term) ||
+                  r.matricule?.toLowerCase().includes(term) ||
+                  r.receiptNumber?.toLowerCase().includes(term)
+                );
+              });
+
+              const totalPages = Math.ceil(filteredReceipts.length / itemsPerPage);
+              const paginatedReceipts = filteredReceipts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
               return (
-                r.student?.toLowerCase().includes(term) ||
-                r.receiptNumber?.toLowerCase().includes(term)
+                <>
+                  {paginatedReceipts.map((r: any) => (
+                    <div key={r.id} className="rounded-lg p-4 border flex items-center justify-between border-inkLine bg-inkSoft">
+                      <div>
+                        <p className="text-sm text-text">{r.student} {r.matricule && <span className="text-xs text-muted">({r.matricule})</span>}</p>
+                        <p className="text-xs text-muted">
+                          <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{r.receiptNumber}</span> • {money(r.amountPaid)} — {r.className}{r.kind === "inscription" ? " (ins.)" : ""}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setSelectedReceipt(r)} className="text-xs px-2 py-1.5 rounded" style={{ color: T.gold, border: `1px solid ${T.inkLine}` }}>Voir</button>
+                        <button onClick={() => downloadReceiptPDF(r, schoolName, schoolLogo, schoolStamp)} className="text-xs px-2 py-1.5 rounded" style={{ color: T.text, border: `1px solid ${T.inkLine}` }} title="Télécharger PDF">
+                          <Download size={14} /> PDF
+                        </button>
+                        <a href={whatsappLink(r)} target="_blank" rel="noreferrer" className="text-xs px-2 py-1.5 rounded flex items-center gap-1" style={{ background: T.green, color: T.ink }}>
+                          <Send size={12} /> WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {totalPages > 1 && (
+                    <div className="col-span-1 sm:col-span-2 flex justify-between items-center px-4 py-3 mt-2 rounded-lg border border-inkLine bg-inkSoft">
+                      <button 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 rounded text-sm text-text bg-ink border border-inkLine disabled:opacity-50"
+                      >
+                        Précédent
+                      </button>
+                      <span className="text-sm text-muted">Page {currentPage} sur {totalPages}</span>
+                      <button 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 rounded text-sm text-text bg-ink border border-inkLine disabled:opacity-50"
+                      >
+                        Suivant
+                      </button>
+                    </div>
+                  )}
+                </>
               );
-            })
-            .map((r: any) => (
-            <div key={r.id} className="rounded-lg p-4 border flex items-center justify-between border-inkLine bg-inkSoft">
-              <div>
-                <p className="text-sm text-text">{r.student}</p>
-                <p className="text-xs text-muted">
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{r.receiptNumber}</span> • {money(r.amountPaid)} — {r.className}{r.kind === "inscription" ? " (ins.)" : ""}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setSelectedReceipt(r)} className="text-xs px-2 py-1.5 rounded" style={{ color: T.gold, border: `1px solid ${T.inkLine}` }}>Voir</button>
-                <button onClick={() => downloadReceiptPDF(r, schoolName, schoolLogo, schoolStamp)} className="text-xs px-2 py-1.5 rounded" style={{ color: T.text, border: `1px solid ${T.inkLine}` }} title="Télécharger PDF">
-                  <Download size={14} /> PDF
-                </button>
-                <a href={whatsappLink(r)} target="_blank" rel="noreferrer" className="text-xs px-2 py-1.5 rounded flex items-center gap-1" style={{ background: T.green, color: T.ink }}>
-                  <Send size={12} /> WhatsApp
-                </a>
-              </div>
-            </div>
-          ))}
+            })()}
+          </div>
         </div>
       )}
 
@@ -103,7 +139,7 @@ export function ReceiptScreen() {
                 school={schoolName} 
                 schoolLogo={schoolLogo}
                 schoolStamp={schoolStamp}
-                student={selectedReceipt.student} 
+                student={`${selectedReceipt.student} ${selectedReceipt.matricule ? `(${selectedReceipt.matricule})` : ''}`.trim()} 
                 className={selectedReceipt.className} 
                 amountDue={selectedReceipt.amountDue} 
                 amountPaid={selectedReceipt.amountPaid} 
@@ -136,6 +172,7 @@ export function ReceiptScreen() {
               const term = receiptSearch.toLowerCase();
               return (
                 r.student?.toLowerCase().includes(term) ||
+                r.matricule?.toLowerCase().includes(term) ||
                 r.receiptNumber?.toLowerCase().includes(term)
               );
             })
@@ -145,7 +182,7 @@ export function ReceiptScreen() {
                 school={schoolName} 
                 schoolLogo={schoolLogo}
                 schoolStamp={schoolStamp}
-                student={r.student} 
+                student={`${r.student} ${r.matricule ? `(${r.matricule})` : ''}`.trim()} 
                 className={r.className} 
                 amountDue={r.amountDue} 
                 amountPaid={r.amountPaid} 

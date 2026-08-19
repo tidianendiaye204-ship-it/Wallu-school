@@ -12,24 +12,19 @@ export function RecouvrementScreen() {
     const classLookup = new Map<string, any>(classes.map((c: any) => [c.id, c]));
     const list: any[] = [];
     for (const s of students) {
-      if (!s.classId) continue;
+      if (!s.classId || s.status === 'parti' || s.status === 'exclu') continue;
       const cls = classLookup.get(s.classId);
       if (!cls) continue;
 
       let arrears = 0;
-      let missingCurrentMonth = true;
 
       if (s.dues) {
         for (const due of s.dues) {
-          if (due.period === period) missingCurrentMonth = false;
-          if (due.amountDue > due.amountAllocated) {
+          // On ne compte comme impayé que les mois passés ou le mois courant
+          if (due.period <= period && due.amountDue > due.amountAllocated) {
             arrears += (due.amountDue - due.amountAllocated);
           }
         }
-      }
-
-      if (missingCurrentMonth) {
-        arrears += cls.monthlyFee;
       }
 
       if (arrears > 0) {

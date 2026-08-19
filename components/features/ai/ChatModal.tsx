@@ -40,23 +40,30 @@ export function ChatModal() {
 
     try {
       // Compute metrics
-      const period = getCurrentAcademicPeriod();
+      const now = new Date();
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       let expectedAmount = 0;
       let collectedAmount = 0;
       const unpaidStudents: any[] = [];
 
       students.forEach((s: any) => {
-        const cls = classes.find((c: any) => c.id === s.classId);
-        if (cls) {
-          expectedAmount += cls.monthlyFee;
-          const due = s.dues?.find((d: any) => period.startsWith(d.period));
-          if (due) {
-            collectedAmount += due.amountAllocated;
-            const owed = due.amountDue - due.amountAllocated;
-            if (owed > 0) {
-              unpaidStudents.push({ name: s.name, owed });
+        if (!s.classId || s.status === 'parti' || s.status === 'exclu') return;
+        
+        let studentOwed = 0;
+        if (s.dues) {
+          for (const due of s.dues) {
+            if (due.period === currentMonthKey) {
+              expectedAmount += due.amountDue;
+              collectedAmount += due.amountAllocated;
+            }
+            if (due.period <= currentMonthKey && due.amountDue > due.amountAllocated) {
+              studentOwed += (due.amountDue - due.amountAllocated);
             }
           }
+        }
+        
+        if (studentOwed > 0) {
+          unpaidStudents.push({ name: s.name, owed: studentOwed });
         }
       });
 

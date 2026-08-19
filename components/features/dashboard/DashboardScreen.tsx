@@ -95,28 +95,41 @@ export function DashboardScreen({ navigate }: { navigate: (tab: string) => void 
   }
 
   // Actionable Lists
-  const unpaidStudents = students.filter(s => {
-    const cls = classMap.get(s.classId);
-    if (!cls) return false;
-    const due = s.dues?.find((d: any) => d.period === period);
-    const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
-    return remaining > 0;
-  }).map(s => {
-    const cls = classMap.get(s.classId)!;
-    const due = s.dues?.find((d: any) => d.period === period);
-    const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
-    
-    // Deadline is the 5th of the FOLLOWING month
-    const targetPeriod = due ? due.period : period;
-    const [y, m] = targetPeriod.split("-").map(Number);
-    // JS Date month is 0-indexed. So new Date(y, m, 5) gives the 5th of the NEXT month automatically!
-    // Example: "2026-10" -> y=2026, m=10 -> new Date(2026, 10, 5) -> November 5, 2026.
-    const dueDate = new Date(y, m, 5);
-    
-    const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
-    return { ...s, remaining, className: cls.name, diffDays };
-  }).sort((a, b) => a.diffDays - b.diffDays).slice(0, 5); // Take top 5 urgents
+  const unpaidStudents = students
+    .filter(s => s.classId && s.status !== 'parti' && s.status !== 'exclu')
+    .map(s => {
+      const cls = classMap.get(s.classId)!;
+      let oldestUnpaidDue = null;
+      let totalRemaining = 0;
+
+      if (s.dues) {
+        // dues sont au format "YYYY-MM", on peut les trier
+        const sortedDues = [...s.dues].sort((a: any, b: any) => a.period.localeCompare(b.period));
+        for (const due of sortedDues) {
+          // Utiliser currentMonthKey ("YYYY-MM") pour comparer avec "YYYY-MM"
+          if (due.period <= currentMonthKey && due.amountDue > due.amountAllocated) {
+            totalRemaining += (due.amountDue - due.amountAllocated);
+            if (!oldestUnpaidDue) {
+              oldestUnpaidDue = due;
+            }
+          }
+        }
+      }
+
+      if (totalRemaining > 0 && oldestUnpaidDue) {
+        const targetPeriod = oldestUnpaidDue.period;
+        const [y, m] = targetPeriod.split("-").map(Number);
+        // JS Date month is 0-indexed. Le 5 du mois SUIVANT s'écrit new Date(y, m, 5) 
+        // Exemple: targetPeriod = "2026-10" -> y=2026, m=10 -> new Date(2026, 10, 5) -> 5 Novembre
+        const dueDate = new Date(y, m, 5);
+        const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return { ...s, remaining: totalRemaining, className: cls.name, diffDays };
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.diffDays - b.diffDays)
+    .slice(0, 5); // Take top 5 urgents
 
   const unpaidStaff = staff.filter(m => {
     const paidThisMonth = staffPayments.filter((p: any) => p.staffId === m.id && p.period && p.period.startsWith(period.substring(0, 7))).reduce((a: any, p: any) => a + p.amount, 0);

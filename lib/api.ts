@@ -185,12 +185,17 @@ export async function addStudent(params: {
     const fakeId = `offline-student-${Date.now()}`;
     if (cache) {
       const cls = cache.classes?.find((c: any) => c.id === params.classId);
+      const yy = String(new Date().getFullYear()).slice(-2);
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      const matricule = `${yy}-${rand}`;
+      
       const student = {
         id: fakeId,
         school_id: params.schoolId,
         class_id: params.classId,
         full_name: params.fullName,
         parent_phone: params.parentPhone,
+        matricule,
         status: "actif",
         name: params.fullName, // Keep compatibility with older cache maps
         parentPhone: params.parentPhone,
@@ -204,8 +209,12 @@ export async function addStudent(params: {
       await saveSchoolCache(params.schoolId, cache);
     }
     
-    return { id: fakeId, full_name: params.fullName, parent_phone: params.parentPhone };
+    return { id: fakeId, full_name: params.fullName, parent_phone: params.parentPhone, matricule };
   }
+
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  const matricule = `${yy}-${rand}`;
 
   // 1. Insère l’élève
   const { data: student, error } = await supabase
@@ -215,6 +224,7 @@ export async function addStudent(params: {
       class_id: params.classId,
       full_name: params.fullName,
       parent_phone: params.parentPhone,
+      matricule,
     })
     .select()
     .single();
@@ -254,6 +264,20 @@ export async function deleteStudent(studentId: string, schoolId: string) {
   const { error } = await supabase
     .from("students")
     .delete()
+    .eq("id", studentId)
+    .eq("school_id", schoolId);
+    
+  if (error) throw error;
+}
+
+export async function archiveStudent(studentId: string, schoolId: string) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error("Impossible d'archiver un élève en mode hors-ligne. Veuillez vous reconnecter.");
+  }
+  
+  const { error } = await supabase
+    .from("students")
+    .update({ status: 'parti' })
     .eq("id", studentId)
     .eq("school_id", schoolId);
     

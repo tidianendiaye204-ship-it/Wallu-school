@@ -132,7 +132,7 @@ export async function downloadReceiptPDF(r: any, schoolName: string, schoolLogo:
     doc.text(value, x, y + 4, { align });
   };
 
-  infoRow(ty, "Élève", r.student, "left");
+  infoRow(ty, "Élève", `${r.student} ${r.matricule ? `(${r.matricule})` : ''}`.trim(), "left");
   infoRow(ty, "Classe", r.className, "right");
   ty += 12;
   infoRow(ty, "Téléphone", r.phone || "—", "left");

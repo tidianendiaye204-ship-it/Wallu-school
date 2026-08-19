@@ -8,7 +8,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { AddStudentModal } from "../students/AddStudentModal";
 import { PayModal } from "../payments/PayModal";
 import { InscriptionPayModal } from "../payments/InscriptionPayModal";
-import { recordStudentPayment, generateMissingReceipts, addClass, addStudent, deleteStudent } from "../../../lib/api";
+import { recordStudentPayment, generateMissingReceipts, addClass, addStudent, archiveStudent } from "../../../lib/api";
 import { useNotifications } from "../../contexts/NotificationContext";
 
 export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettings?: () => void; onGoToReceipts?: () => void }) {
@@ -18,6 +18,8 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
   
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
   const period = getCurrentAcademicPeriod();
 
   // Local Modal States
@@ -25,6 +27,8 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
   const [payModal, setPayModal] = useState<any>(null);
   const [inscriptionModal, setInscriptionModal] = useState<any>(null);
   const [successMessage, setSuccessMessage] = useState<{ count: number } | null>(null);
+  const [studentPage, setStudentPage] = useState(1);
+  const itemsPerPage = 50;
 
   const toggleSelect = (id: string) => {
     const next = new Set(selected);
@@ -36,7 +40,14 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
   // Vérifie si un élève a déjà un reçu ce mois
   const studentHasReceipt = (studentName: string) => {
     const currentMonth = new Date().toLocaleDateString("fr-FR", { month: "2-digit", year: "numeric" });
-    return receipts.some((r: any) => r.student === studentName && r.receiptNumber);
+    return receipts.some((r: any) => {
+      if (r.student !== studentName || !r.receiptNumber) return false;
+      if (r.kind === 'inscription') return false; // L'inscription n'est pas une mensualité
+      if (!r.date) return false;
+      
+      const [y, m] = r.date.split('-');
+      return `${m}/${y}` === currentMonth;
+    });
   };
 
   const bulkGenerate = async () => {
@@ -175,17 +186,17 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
     });
   };
 
-  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+  const handleArchiveStudent = async (studentId: string, studentName: string) => {
     if (!schoolId) return;
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer l'élève ${studentName} ? Cette action est irréversible et supprimera tout son historique de paiements.`)) {
+    if (window.confirm(`Êtes-vous sûr de vouloir archiver l'élève ${studentName} ? Il n'apparaîtra plus dans la classe, mais son historique de paiements sera conservé.`)) {
       try {
-        await deleteStudent(studentId, schoolId);
-        addToast('success', `${studentName} a été supprimé.`, 'Suppression réussie');
-        addNotification({ type: 'success', title: 'Élève supprimé', message: `${studentName} a été supprimé.`, category: 'system' });
+        await archiveStudent(studentId, schoolId);
+        addToast('success', `${studentName} a été archivé.`, 'Archivage réussi');
+        addNotification({ type: 'success', title: 'Élève archivé', message: `${studentName} a été archivé.`, category: 'system' });
         refreshData();
       } catch (err: any) {
         console.error(err);
-        addToast('error', err?.message || 'Erreur lors de la suppression', 'Erreur');
+        addToast('error', err?.message || 'Erreur lors de l\'archivage', 'Erreur');
       }
     }
   };
@@ -226,11 +237,11 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
             {classes.map((c) => {
-              const classStudents = students.filter((s) => s.classId === c.id);
+              const classStudents = students.filter((s) => s.classId === c.id && s.status !== 'parti' && s.status !== 'exclu');
               const paid = classStudents.reduce((sum, s) => sum + (s.dues.find((d: any) => period.startsWith(d.period))?.amountAllocated || 0), 0);
               const due = classStudents.length * c.monthlyFee;
               return (
-                <button key={c.id} onClick={() => setSelectedClass(c.id)} className="text-left rounded-lg p-5 border hover:border-opacity-60 transition-colors border-inkLine bg-inkSoft">
+                <button key={c.id} onClick={() => { setSelectedClass(c.id); setStudentPage(1); }} className="text-left rounded-lg p-5 border hover:border-opacity-60 transition-colors border-inkLine bg-inkSoft">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-base font-medium text-text">{c.name}</span>
                     <span className="text-xs text-muted">{classStudents.length} élèves</span>
@@ -248,7 +259,7 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
 
   return (
     <div>
-      <button onClick={() => setSelectedClass(null)} className="flex items-center gap-1 text-sm mb-4 text-muted">
+      <button onClick={() => { setSelectedClass(null); setPage(1); }} className="flex items-center gap-1 text-sm mb-4 text-muted">
         <ChevronLeft size={16} /> Retour aux classes
       </button>
       <div className="flex items-center justify-between mb-6">
@@ -303,67 +314,97 @@ export function ClassesScreen({ onGoToSettings, onGoToReceipts }: { onGoToSettin
       <p className="text-xs mb-3 text-muted">Cochez les élèves puis cliquez sur « Générer » pour créer leurs reçus du mois.</p>
       
       <div className="rounded-lg border overflow-hidden border-inkLine">
-        {students.filter((s) => s.classId === selectedClass).map((s) => {
-          const cls = classMap.get(s.classId);
-          const currentRealPeriod = currentPeriod();
-          const totalArrears = s.dues.reduce((sum: number, d: any) => d.period <= period ? sum + (d.amountDue - d.amountAllocated) : sum, 0);
-          const strictArrears = s.dues.reduce((sum: number, d: any) => d.period < currentRealPeriod ? sum + (d.amountDue - d.amountAllocated) : sum, 0);
-          const advanceMonths = s.dues.filter((d: any) => d.period > period && d.amountAllocated > 0).length;
-          
-          let paymentStatus = "Mensualité à jour";
-          let paymentColor = T.green;
-          
-          if (strictArrears > 0) {
-            const monthsCount = Math.ceil(strictArrears / (cls.monthlyFee || 1));
-            paymentStatus = `Retard : ${monthsCount} mois (${money(totalArrears)})`;
-            paymentColor = T.rust;
-          } else if (totalArrears > 0) {
-            paymentStatus = `À payer : ${money(totalArrears)}`;
-            paymentColor = "#EAB308"; // Jaune/Orange pour "à payer" sans être en retard
-          } else if (advanceMonths > 0) {
-            paymentStatus = `Avance : ${advanceMonths} mois`;
-          }
+        {(() => {
+          const classStudents = students.filter((s) => s.classId === selectedClass && s.status !== 'parti' && s.status !== 'exclu');
+          const totalPages = Math.ceil(classStudents.length / itemsPerPage);
+          const paginatedStudents = classStudents.slice((studentPage - 1) * itemsPerPage, studentPage * itemsPerPage);
 
-          const inscriptionSolde = cls.inscriptionFee - (s.inscriptionPaid || 0);
-          const hasReceipt = studentHasReceipt(s.name);
           return (
-            <div key={s.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0 border-inkLine bg-inkSoft">
-              <div className="flex items-center gap-3">
-                <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} className="w-4 h-4 accent-current" style={{ accentColor: T.gold }} />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-text">{s.name}</p>
-                    {hasReceipt && (
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "#0d3320", color: T.green, border: `1px solid ${T.green}33` }}>
-                        <CheckCircle size={10} /> Reçu ✓
-                      </span>
-                    )}
+            <>
+              {paginatedStudents.map((s) => {
+                const cls = classMap.get(s.classId);
+                const currentRealPeriod = currentPeriod();
+                const totalArrears = s.dues.reduce((sum: number, d: any) => d.period <= period ? sum + (d.amountDue - d.amountAllocated) : sum, 0);
+                const strictArrears = s.dues.reduce((sum: number, d: any) => d.period < currentRealPeriod ? sum + (d.amountDue - d.amountAllocated) : sum, 0);
+                const advanceMonths = s.dues.filter((d: any) => d.period > period && d.amountAllocated > 0).length;
+                
+                let paymentStatus = "Mensualité à jour";
+                let paymentColor = T.green;
+                
+                if (strictArrears > 0) {
+                  const monthsCount = Math.ceil(strictArrears / (cls.monthlyFee || 1));
+                  paymentStatus = `Retard : ${monthsCount} mois (${money(totalArrears)})`;
+                  paymentColor = T.rust;
+                } else if (totalArrears > 0) {
+                  paymentStatus = `À payer : ${money(totalArrears)}`;
+                  paymentColor = "#EAB308"; // Jaune/Orange pour "à payer" sans être en retard
+                } else if (advanceMonths > 0) {
+                  paymentStatus = `Avance : ${advanceMonths} mois`;
+                }
+
+                const inscriptionSolde = cls.inscriptionFee - (s.inscriptionPaid || 0);
+                const hasReceipt = studentHasReceipt(s.name);
+                return (
+                  <div key={s.id} className="flex items-center justify-between px-5 py-4 border-b last:border-b-0 border-inkLine bg-inkSoft">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} className="w-4 h-4 accent-current" style={{ accentColor: T.gold }} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-text">{s.name} {s.matricule && <span className="text-xs text-muted">({s.matricule})</span>}</p>
+                          {hasReceipt && (
+                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "#0d3320", color: T.green, border: `1px solid ${T.green}33` }}>
+                              <CheckCircle size={10} /> Reçu ✓
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs mt-0.5" style={{ color: paymentColor }}>
+                          {paymentStatus}
+                          {" · "}
+                          <span style={{ color: inscriptionSolde > 0 ? T.rust : T.green }}>
+                            {inscriptionSolde > 0 ? `Inscription : ${money(inscriptionSolde)} restant` : "Inscription réglée"}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {inscriptionSolde > 0 && (
+                        <button onClick={() => setInscriptionModal(s)} className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium" style={{ background: T.inkSoft, color: T.gold, border: `1px solid ${T.inkLine}` }}>
+                          Inscription
+                        </button>
+                      )}
+                      <button onClick={() => setPayModal(s)} className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium bg-gold text-ink">
+                        <CircleDollarSign size={14} /> Mensualité
+                      </button>
+                      <button onClick={() => handleArchiveStudent(s.id, s.name)} className="flex items-center justify-center rounded-md px-2 py-2 transition-colors hover:bg-opacity-80" style={{ background: T.inkSoft, color: T.rust, border: `1px solid ${T.inkLine}` }} title="Archiver cet élève">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: paymentColor }}>
-                    {paymentStatus}
-                    {" · "}
-                    <span style={{ color: inscriptionSolde > 0 ? T.rust : T.green }}>
-                      {inscriptionSolde > 0 ? `Inscription : ${money(inscriptionSolde)} restant` : "Inscription réglée"}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {inscriptionSolde > 0 && (
-                  <button onClick={() => setInscriptionModal(s)} className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium" style={{ background: T.inkSoft, color: T.gold, border: `1px solid ${T.inkLine}` }}>
-                    Inscription
+                );
+              })}
+              
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center px-5 py-4 border-t border-inkLine bg-inkSoft">
+                  <button 
+                    onClick={() => setStudentPage(p => Math.max(1, p - 1))} 
+                    disabled={studentPage === 1}
+                    className="px-3 py-1.5 rounded text-sm text-text bg-ink border border-inkLine disabled:opacity-50"
+                  >
+                    Précédent
                   </button>
-                )}
-                <button onClick={() => setPayModal(s)} className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium bg-gold text-ink">
-                  <CircleDollarSign size={14} /> Mensualité
-                </button>
-                <button onClick={() => handleDeleteStudent(s.id, s.name)} className="flex items-center justify-center rounded-md px-2 py-2 transition-colors hover:bg-opacity-80" style={{ background: T.inkSoft, color: T.rust, border: `1px solid ${T.inkLine}` }} title="Supprimer cet élève">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
+                  <span className="text-sm text-muted">Page {studentPage} sur {totalPages}</span>
+                  <button 
+                    onClick={() => setStudentPage(p => Math.min(totalPages, p + 1))} 
+                    disabled={studentPage === totalPages}
+                    className="px-3 py-1.5 rounded text-sm text-text bg-ink border border-inkLine disabled:opacity-50"
+                  >
+                    Suivant
+                  </button>
+                </div>
+              )}
+            </>
           );
-        })}
+        })()}
       </div>
 
       {addStudentModal && (

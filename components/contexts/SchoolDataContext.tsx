@@ -98,8 +98,10 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
           return {
             id: s.id,
             name: s.full_name,
+            matricule: s.matricule,
             classId: s.class_id,
             parentPhone: s.parent_phone,
+            status: s.status,
             inscriptionPaid: paidInscription,
             dues: s.student_dues?.map((d: any) => ({
               period: d.period.substring(0, 7),
@@ -142,6 +144,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
              id: r.id,
              receiptNumber: r.receipt_number,
              student: p?.students?.full_name || "Inconnu",
+             matricule: p?.students?.matricule,
              className: clsMap.get(p?.students?.class_id) || "",
              amountDue: fee,
              amountPaid: p?.amount || 0,
@@ -154,7 +157,35 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
              date: p?.paid_at
            };
         });
-        setReceipts(loadedReceipts);
+        const studentMap = new Map(loadedStudents.map((s: any) => [s.id, s]));
+        const clsInscriptionFeeMap = new Map(cls.map((c: any) => [c.id, c.inscription_fee]));
+
+        const inscriptionReceipts = allInscrPay.map((ip: any) => {
+           const s = studentMap.get(ip.student_id);
+           const fee = s ? (clsInscriptionFeeMap.get(s.classId) || 0) : 0;
+           return {
+             id: ip.id,
+             receiptNumber: "INS-" + ip.id.substring(0, 8).toUpperCase(),
+             student: s?.name || "Inconnu",
+             matricule: s?.matricule,
+             className: s ? (clsMap.get(s.classId) || "") : "",
+             amountDue: fee,
+             amountPaid: ip.amount,
+             carried: 0,
+             manque: Math.max(0, fee - ip.amount),
+             nextPeriodLabel: null,
+             phone: s?.parentPhone,
+             method: ip.method,
+             kind: "inscription",
+             date: ip.paid_at
+           };
+        });
+
+        const allReceipts = [...loadedReceipts, ...inscriptionReceipts].sort((a, b) => {
+          return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime();
+        });
+
+        setReceipts(allReceipts);
 
         // 3. Sauvegarder les données fraîches dans le cache local
         await saveSchoolCache(schoolId, {
@@ -163,7 +194,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
           staff: loadedStaff,
           staffPayments: loadedStaffPayments,
           expenses: loadedExpenses,
-          receipts: loadedReceipts,
+          receipts: allReceipts,
           studentPayments: allStudentPay,
           inscriptionPayments: allInscrPay
         });
@@ -182,13 +213,19 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
 
   // Alert totals
   const unpaidStudentsCount = useMemo(() => {
-    const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+    const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
     return students.filter(s => {
-      const cls = classMap.get(s.classId);
-      if (!cls) return false;
-      const due = s.dues?.find((d: any) => d.period === period);
-      const remaining = due ? due.amountDue - due.amountAllocated : cls.monthlyFee;
-      return remaining > 0;
+      if (!s.classId || s.status === 'parti' || s.status === 'exclu') return false;
+      let hasUnpaid = false;
+      if (s.dues) {
+        for (const due of s.dues) {
+          if (due.period <= currentMonthKey && due.amountDue > due.amountAllocated) {
+            hasUnpaid = true;
+            break;
+          }
+        }
+      }
+      return hasUnpaid;
     }).length;
   }, [students, classMap]);
 
